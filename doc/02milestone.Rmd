@@ -239,7 +239,7 @@ g
 freqs <- loadFrequencies("../results/dfm/generalDfm1.dat", "../results/dfm/freq1.dat")
 #dfFreq <- as.data.frame(table(freqs))
 #g <- ggplot() + geom_violin(data = data.frame(x = rep(1, nrow(dfFreq)), y = log(as.numeric(dfFreq$Freq))),  mapping = aes(x = x, y = y, group = x))
-g <- ggplot() + geom_violin(data = data.frame(x = rep(1, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
+g <- ggplot() + geom_boxplot(data = data.frame(x = rep(1, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
 
 
 rm(freqs)
@@ -249,7 +249,7 @@ rm(freqs)
 freqs <- loadFrequencies("../results/dfm/generalDfm2.dat", "../results/dfm/freq2.dat")
 #dfFreq <- as.data.frame(table(freqs))
 #g <- g + geom_violin(data = data.frame(x = rep(2, nrow(dfFreq)), y = log(as.numeric(dfFreq$Freq))),  mapping = aes(x = x, y = y, group = x))
-g <- g + geom_violin(data = data.frame(x = rep(2, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
+g <- g + geom_boxplot(data = data.frame(x = rep(2, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
 
 rm(freqs)
 #rm(dfFreq)
