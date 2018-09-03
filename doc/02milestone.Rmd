@@ -36,6 +36,230 @@ linestats
 We can see that the line length average is similar in the blogs and news texts included in
 the corpora. On the opposite, no line belonging to the tweets exceeds 140 characters.
 
-## Loading procedure
+## Loading and feature extraction
 
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+rebuildFiles <- FALSE
+```
+
+An important problem arising when trying to load the corpora is the limited size of the main
+memory. We've been performing the loading task on a PC with 8 GB RAM (actually less available to R).
+As it is impossible to load all the three files into the memory and perform operations on them,
+we divide each one into chunks. Our splitFiles() function is in charge of doing that.
+
+Then we execute the extractFeatures(). When we are finished, we have the document-feature matrices
+(DFMs) of n-grams stored on the disk. They will be the base of our further research.
+
+```{r warning=FALSE, message=FALSE}
+source("../TextFileTools/splitFiles.R")
+source("../nGram/extractFeatures.R")
+if (rebuildFiles)
+{
+    splitFiles()
+    
+    # Build tokens and DFMs for each small file, store them on the disk
+    extractFeatures(tokensDirectory = "../results",
+                    matrixDirectory = "../results",
+                    buildTokens = TRUE,
+                    buildMatrices = TRUE)
+    # Now, based on the tokens and partial DFMs, build overall DFMs
+    # for 1-, 2-, 3- and 4-grams
+    extractFeatures(tokensDirectory = "../results",
+                    matrixDirectory = "../results",
+                    buildTokens = FALSE,
+                    buildMatrices = FALSE,
+                    mergeMatrices = TRUE,
+                    mergeFiltered = TRUE)
+}
+```
+
+TODO: explain the steps performed by extractFeatures()
+
+## Distribution analysis of the overall corpus
+
+In this section we'll explore how the frequencies of the features (1-, 2-, 3- and 4-grams) are distributed.
+We use our loadFrequencies() function which reads a DFM from a file and
+converts it into a vector of frequency values sorted in descendant order.
+Let's take a look at words first.
+
+```{r message=FALSE, echo=FALSE}
+source("../nGram/loadFrequencies.R")
+library(ggplot2)
+
+freqs <- loadFrequencies("../results/dfm/generalDfm1.dat", "../results/dfm/freq1.dat")
+
+# Look for 50% and 90%
+threshold50 <- 0.5 * sum(freqs)
+threshold90 <- 0.9 * sum(freqs)
+
+sufficient50 <- sum(cumsum(freqs) < threshold50) + 1
+sufficient90 <- sum(cumsum(freqs) < threshold90) + 1
+
+dsize <- min(sufficient90 + 100, length(freqs))
+g <- ggplot(data = data.frame(x = log(1:dsize), y = log(freqs[1:dsize])), 
+                                    mapping = aes(x = x, y = y, color = "red")) + 
+    geom_line() +
+    geom_vline(xintercept = log(sufficient50), color = "red") + 
+    geom_vline(xintercept = log(sufficient90), color = "red") +
+    labs(x = "log(num. feature)", y = "log(count)")
+```
+
+Our preprocessing step detected `r length(freqs)` different words. 
+All of them account for `r sum(freqs)` entries.
+The most frequent words are the following:
+
+```{r echo=FALSE}
+head(freqs, 20)
+```
+
+Examples of unfrequent words:
+
+```{r echo=FALSE}
+tail(freqs, 5)
+```
+
+It turns out that to cover 90% of all word usages we need to keep `r sufficient90` of the most frequent words.
+50% is covered by `r sufficient50` of them.
+
+
+```{r message=FALSE, echo=FALSE}
+freqs <- loadFrequencies("../results/dfm/generalDfm2.dat", "../results/dfm/freq2.dat")
+
+# Look for 50% and 90%
+threshold50 <- 0.5 * sum(freqs)
+threshold90 <- 0.9 * sum(freqs)
+
+sufficient50 <- sum(cumsum(freqs) < threshold50) + 1
+sufficient90 <- sum(cumsum(freqs) < threshold90) + 1
+
+#dsize <- length(freqs)
+dsize <- min(sufficient90 + 100, length(freqs))
+#g <- ggplot(data = data.frame(x = 1:dsize, y = log(freqs[1:dsize])), 
+#                                    mapping = aes(x = x, y = y), color = "blue") + 
+#    geom_line() +
+#    geom_vline(xintercept = sufficient50) + geom_vline(xintercept = sufficient90)
+
+g <- g + geom_line(data = data.frame(x = log(1:dsize), y = log(freqs[1:dsize])), 
+                                    mapping = aes(x = x, y = y), color = "blue") +
+    geom_vline(xintercept = log(sufficient50), color = "blue") + 
+    geom_vline(xintercept = log(sufficient90), color = "blue")
+```
+
+The number of different bigrams is `r length(freqs)`, the overall number of their entries is `r sum(freqs)`.
+90% and 50% of the entries correspond to `r sufficient90` and `r sufficient50` most frequent bigrams.
+The most frequent bigrams are the following:
+
+```{r  message=FALSE, echo=FALSE}
+head(freqs, 20)
+```
+
+Examples of unfrequent bigrams:
+
+```{r message=FALSE, echo=FALSE}
+tail(freqs, 5)
+```
+
+```{r message=FALSE, echo=FALSE}
+freqs <- loadFrequencies("../results/dfm/generalDfm3.dat", "../results/dfm/freq3.dat")
+
+## Look for 50% and 90%
+#threshold50 <- 0.5 * sum(freqs)
+#threshold90 <- 0.9 * sum(freqs)
+#
+#sufficient50 <- sum(cumsum(freqs) < threshold50) + 1
+#sufficient90 <- sum(cumsum(freqs) < threshold90) + 1
+
+#dsize <- length(freqs)
+# at the moment, the sufficient90 for bigrams
+dsize <- min(sufficient90 + 100, length(freqs))
+
+g <- g + geom_line(data = data.frame(x = log(1:dsize), y = log(freqs[1:dsize])), 
+                                    mapping = aes(x = x, y = y), color = "green")
+```
+
+At the preprocessing step we filtered out the less frequent trigrams.
+Now we keep `r length(freqs)` of different features. These features account for `r sum(freqs)` entries.
+The most frequent trigrams are the following:
+
+```{r  message=FALSE, echo=FALSE}
+head(freqs, 20)
+```
+
+Among our fitered trigrams, these are the less frequent:
+
+```{r message=FALSE, echo=FALSE}
+tail(freqs, 5)
+```
+
+
+```{r message=FALSE, echo=FALSE}
+freqs <- loadFrequencies("../results/dfm/generalDfm4.dat", "../results/dfm/freq4.dat")
+
+## Look for 50% and 90%
+#threshold50 <- 0.5 * sum(freqs)
+#threshold90 <- 0.9 * sum(freqs)
+#
+#sufficient50 <- sum(cumsum(freqs) < threshold50) + 1
+#sufficient90 <- sum(cumsum(freqs) < threshold90) + 1
+
+#dsize <- length(freqs)
+# at the moment, the sufficient90 for bigrams
+dsize <- min(sufficient90 + 100, length(freqs))
+
+g <- g + geom_line(data = data.frame(x = log(1:dsize), y = log(freqs[1:dsize])), 
+                                    mapping = aes(x = x, y = y), color = "black")
+```
+
+At the preprocessing step we filtered out the less frequent 4-grams.
+Now we keep `r length(freqs)` of different features. These features account for `r sum(freqs)` entries.
+The most frequent 4-grams are the following:
+
+```{r  message=FALSE, echo=FALSE}
+head(freqs, 20)
+```
+
+Among our fitered 4-grams, these are the less frequent:
+
+```{r message=FALSE, echo=FALSE}
+tail(freqs, 5)
+```
+
+
+Let's show the frequencies of the words, bigrams and trigrams on the same graph,
+using a logarithmic scale.
+
+```{r echo=FALSE}
+rm(freqs)
+g
+```
+
+```{r}
+#g <- ggplot(data = data.frame(x = freqs / sum(freqs)), mapping = aes(x = x)) + stat_density(aes(y = ..count..)) + scale_y_continuous(trans = "log1p")
+
+freqs <- loadFrequencies("../results/dfm/generalDfm1.dat", "../results/dfm/freq1.dat")
+#dfFreq <- as.data.frame(table(freqs))
+#g <- ggplot() + geom_violin(data = data.frame(x = rep(1, nrow(dfFreq)), y = log(as.numeric(dfFreq$Freq))),  mapping = aes(x = x, y = y, group = x))
+g <- ggplot() + geom_violin(data = data.frame(x = rep(1, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
+
+
+rm(freqs)
+#rm(dfFreq)
+
+# ... for 2-grams
+freqs <- loadFrequencies("../results/dfm/generalDfm2.dat", "../results/dfm/freq2.dat")
+#dfFreq <- as.data.frame(table(freqs))
+#g <- g + geom_violin(data = data.frame(x = rep(2, nrow(dfFreq)), y = log(as.numeric(dfFreq$Freq))),  mapping = aes(x = x, y = y, group = x))
+g <- g + geom_violin(data = data.frame(x = rep(2, length(freqs)), y = log(freqs)),  mapping = aes(x = x, y = y, group = x))
+
+rm(freqs)
+#rm(dfFreq)
+
+
+#freqs <- loadFrequencies("../results/dfm/generalDfm3.dat", "../results/dfm/freq3.dat")
+#dfFreq <- as.data.frame(table(freqs))
+#g <- g + geom_violin(data = data.frame(x = rep(3, nrow(dfFreq)), y = log(as.numeric(dfFreq$Freq))),  mapping = aes(x = x, y #= y, group = x)) + geom_violin()
+
+#rm(freqs)
+#rm(dfFreq)
+```
 

@@ -115,7 +115,7 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                         mergeMatrices = FALSE,
                         mergeFiltered = FALSE,
                         filterSteps = c(3, 8, 14),
-                        ngramTypes = 1:3)
+                        ngramTypes = 1:4)
 {
     resultMatrix <- NA
     
