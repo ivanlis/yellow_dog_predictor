@@ -32,3 +32,8 @@ fileDescr <- c("Blogs", "News", "Twitter")
 linestats <- computeLineStats(fileNames, fileDescr)
 linestats
 ```
+
+We can see that the line length average is similar in the blogs and news texts included in
+the corpora. On the opposite, no line belonging to the tweets exceeds 140 characters.
+
+## Loading procedure
