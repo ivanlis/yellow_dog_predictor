@@ -1,0 +1,34 @@
+---
+title: "Exploratory Data Analysis of Text Corpus"
+author: "Ivan Lysiuchenko"
+date: "September 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this milestone report we present an overview and exploratory analysis of the three files
+we use to build our predictive model. These files represent text corpora extracted from
+blogs, news and tweets in English.
+
+## Files overview
+
+To see what the lines of every file look like we use a simple function that can be found
+in our Github repository. The minimum, maximum, average line length as well as line counts
+are as follows:
+
+```{r message=FALSE, warning=FALSE}
+source("../TextFileTools/computeLineStats.R")
+fileNames <- c(
+    "../materials/datasets/final/en_US/en_US.blogs.txt",
+    "../materials/datasets/final/en_US/en_US.news.txt",
+    "../materials/datasets/final/en_US/en_US.twitter.txt"
+)
+fileDescr <- c("Blogs", "News", "Twitter")
+linestats <- computeLineStats(fileNames, fileDescr)
+linestats
+```
