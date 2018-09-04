@@ -109,8 +109,10 @@ g <- ggplot(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs), z = 
     geom_vline(data = data.frame(x = sufficient50, z = as.factor(1)), mapping = aes(xintercept = x, color = z)) + 
     geom_vline(data = data.frame(x = sufficient90, z = as.factor(1)), mapping = aes(xintercept = x, color = z)) +
     
-    geom_text(mapping = aes(x = sufficient50_1, y = 5e-7, label = "50% 1-grams"), angle = 90, size = 4, vjust = -0.4) +
-    geom_text(mapping = aes(x = sufficient90_1, y = 5e-7, label = "90% 1-grams"), angle = 90, size = 4, vjust = -0.4) +
+    geom_text(mapping = aes(x = sufficient50_1, y = 5e-7, label = "50% 1-grams"), color = "black", 
+              angle = 90, size = 4, vjust = -0.4) +
+    geom_text(mapping = aes(x = sufficient90_1, y = 5e-7, label = "90% 1-grams"), color = "black",
+              angle = 90, size = 4, vjust = -0.4) +
     
     labs(x = "num. feature", y = "frequency")
 ```
@@ -160,8 +162,10 @@ g <- g + geom_line(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs
     geom_vline(data = data.frame(x = sufficient50, z = as.factor(2)), mapping = aes(xintercept = x, color = z)) + 
     geom_vline(data = data.frame(x = sufficient90, z = as.factor(2)), mapping = aes(xintercept = x, color = z)) +
     
-    geom_text(mapping = aes(x = sufficient50_2, y = 5e-7, label = "50% 2-grams"), angle = 90, size = 4, vjust = -0.4) +
-    geom_text(mapping = aes(x = sufficient90_2, y = 5e-7, label = "90% 2-grams"), angle = 90, size = 4, vjust = -0.4)    
+    geom_text(mapping = aes(x = sufficient50_2, y = 5e-7, label = "50% 2-grams"), color = "black",
+              angle = 90, size = 4, vjust = -0.4) +
+    geom_text(mapping = aes(x = sufficient90_2, y = 5e-7, label = "90% 2-grams"), color = "black",
+              angle = 90, size = 4, vjust = -0.4)    
 ```
 
 The number of different bigrams is `r length(freqs)`, the overall number of their entries is `r sum(freqs)`.
