@@ -185,7 +185,7 @@ tail(freqs, 5)
 
 ### Trigrams
 
-```{r message=FALSE, echo=FALSE, eval=FALSE}
+```{r message=FALSE, echo=FALSE, eval=TRUE}
 freqs <- loadFrequencies("../results/dfm/generalDfm3.dat", "../results/dfm/freq3.dat")
 
 ## Look for 50% and 90%
@@ -199,7 +199,7 @@ freqs <- loadFrequencies("../results/dfm/generalDfm3.dat", "../results/dfm/freq3
 # at the moment, the sufficient90 for bigrams
 dsize <- min(sufficient90 + 100, length(freqs))
 
-g <- g + geom_line(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs), z = as,factor(rep(3, dsize))), 
+g <- g + geom_line(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs), z = as.factor(rep(3, dsize))), 
                                     mapping = aes(x = x, y = y, color = z))
 ```
 
@@ -220,7 +220,7 @@ tail(freqs, 5)
 
 ### Four-grams
 
-```{r message=FALSE, echo=FALSE, eval=FALSE}
+```{r message=FALSE, echo=FALSE, eval=TRUE}
 freqs <- loadFrequencies("../results/dfm/generalDfm4.dat", "../results/dfm/freq4.dat")
 
 ## Look for 50% and 90%
@@ -255,8 +255,8 @@ tail(freqs, 5)
 
 ### Empirical frequency distributions
 
-Let's show the frequencies of the words, bigrams and trigrams on the same graph,
-using a logarithmic scale.
+Let's show the frequencies of the words, bigrams, trigrams and 4-grams on the same graph,
+using a logarithmic (log-log) scale.
 
 ```{r echo=FALSE}
 rm(freqs)
@@ -269,23 +269,41 @@ g <- g +
                        labels = c(1, 1000, 1000000)) +
     scale_color_discrete(name = "Features", 
                          #breaks = as.factor(c(1, 2)),
-                         labels = c("1-gram", "2-gram"))
+                         labels = c("1-gram", "2-gram", "3-gram", "4-gram"))
 g
 ```
 
-```{r eval=FALSE}
+It may be interesting to take a look at how the numbers of words and bigrams are distributed in function of their
+relative frequency.
+
+```{r eval=TRUE, echo=FALSE}
 freqs <- loadFrequencies("../results/dfm/generalDfm1.dat", "../results/dfm/freq1.dat")
 g <- ggplot() + geom_boxplot(data = data.frame(x = rep(1, length(freqs)), y = freqs / sum(freqs)),  mapping = aes(x = x, y = y, group = x))
+```
 
+Here is the summary related to unigrams:
 
+```{r echo=FALSE}
+summary(freqs)
+```
+
+```{r echo=FALSE}
 rm(freqs)
 
 # ... for 2-grams
 freqs <- loadFrequencies("../results/dfm/generalDfm2.dat", "../results/dfm/freq2.dat")
-g <- g + geom_boxplot(data = data.frame(x = rep(2, length(freqs)), y = freqs / sum(freqs)),  mapping = aes(x = x, y = y, group = x)) + scale_y_continuous(trans = "log")
+g <- g + geom_boxplot(data = data.frame(x = rep(2, length(freqs)), y = freqs / sum(freqs)),  mapping = aes(x = x, y = y, group = x)) + scale_y_continuous(trans = "log") + labs(x = "n-gram type", y = "relative frequency")
 
+```
+
+Here is the summary related to bigrams:
+
+```{r echo=FALSE}
+summary(freqs)
+```
+
+```{r echo=FALSE}
 rm(freqs)
-
 
 ##freqs <- loadFrequencies("../results/dfm/generalDfm3.dat", "../results/dfm/freq3.dat")
 ##dfFreq <- as.data.frame(table(freqs))
@@ -295,3 +313,9 @@ rm(freqs)
 ##rm(dfFreq)
 ```
 
+In the following box plot it can be seen how the relative frequency distributions are different between unigrams
+and bigrams:
+
+```{r echo=FALSE}
+g
+```
