@@ -17,11 +17,10 @@ blogs, news and tweets in English.
 
 ## Files overview
 
-To see what the lines of every file look like we use a simple function that can be found
-in our Github repository. The minimum, maximum, average line length as well as line counts
-are as follows:
+To see what the lines of every file look like we use a simple function called computeLineStats(). 
+The minimum, maximum, average line length as well as line counts are as follows:
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 source("../TextFileTools/computeLineStats.R")
 fileNames <- c(
     "../materials/datasets/final/en_US/en_US.blogs.txt",
@@ -39,7 +38,7 @@ the corpora. On the opposite, no line belonging to the tweets exceeds 140 charac
 ## Loading and feature extraction
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
-rebuildFiles <- TRUE
+rebuildFiles <- FALSE
 ```
 
 An important problem arising when trying to load the corpora is the limited size of the main
@@ -50,7 +49,19 @@ we divide each one into chunks. Our splitFiles() function is in charge of doing 
 Then we execute the extractFeatures(). When we are finished, we have the document-feature matrices
 (DFMs) of n-grams stored on the disk. They will be the base of our further research.
 
-```{r warning=FALSE, message=FALSE}
+Pre-processing is done in several steps:
+- Load a chunk file, create a quanteda corpus. Reshape it by sentence. 
+- Tokenize the corpus, only removing punctuation. Let's call these tokens "raw".
+- For each n = 1..4 build n-gram tokens out of the raw tokens.
+- Filter these tokens: remove profane words, remove words containing non-alphabetic characters
+(except for the apostrophe and hyphen)
+- Build a document-feature matrix (DFM) for the current corpus and current n.
+- Merge the DFMs for all the chunks. This way we have 4 DFMs, one for each n-gram type.
+
+We process all the unigrams and bigrams.
+For 3- and 4-grams we keep only 60% of the most frequent features due to memory restrictions.
+
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 source("../TextFileTools/splitFiles.R")
 source("../nGram/extractFeatures.R")
 if (rebuildFiles)
@@ -75,7 +86,6 @@ if (rebuildFiles)
 file.copy(list.files(path = "../results", pattern = "generalDfm*", full.names = TRUE, recursive = FALSE), "../results/dfm")
 ```
 
-TODO: explain the steps performed by extractFeatures()
 
 ## Distribution analysis of the overall corpus
 
