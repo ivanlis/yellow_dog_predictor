@@ -39,7 +39,7 @@ the corpora. On the opposite, no line belonging to the tweets exceeds 140 charac
 ## Loading and feature extraction
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
-rebuildFiles <- FALSE
+rebuildFiles <- TRUE
 ```
 
 An important problem arising when trying to load the corpora is the limited size of the main
@@ -71,6 +71,8 @@ if (rebuildFiles)
                     mergeMatrices = TRUE,
                     mergeFiltered = TRUE)
 }
+
+file.copy(list.files(path = "../results", pattern = "generalDfm*", full.names = TRUE, recursive = FALSE), "../results/dfm")
 ```
 
 TODO: explain the steps performed by extractFeatures()
@@ -273,8 +275,9 @@ g <- g +
 g
 ```
 
-It may be interesting to take a look at how the numbers of words and bigrams are distributed in function of their
-relative frequency.
+It may be interesting to take a look at the random variable whose values are all possible values of relative frequency (from 0 to 1).
+We estimate the probability of a relative frequency value as the number of the features occurring with this relative frequency divided by
+the overall number of features.
 
 ```{r eval=TRUE, echo=FALSE}
 freqs <- loadFrequencies("../results/dfm/generalDfm1.dat", "../results/dfm/freq1.dat")
@@ -284,8 +287,10 @@ g <- ggplot() + geom_boxplot(data = data.frame(x = rep(1, length(freqs)), y = fr
 Here is the summary related to unigrams:
 
 ```{r echo=FALSE}
-summary(freqs)
+summary(freqs / sum(freqs))
 ```
+
+The mean of the relative frequency for unigrams is `r mean(freqs / sum(freqs))`, whereas its standard deviation is `r sd(freqs / sum(freqs))`.
 
 ```{r echo=FALSE}
 rm(freqs)
@@ -299,8 +304,14 @@ g <- g + geom_boxplot(data = data.frame(x = rep(2, length(freqs)), y = freqs / s
 Here is the summary related to bigrams:
 
 ```{r echo=FALSE}
-summary(freqs)
+summary(freqs / sum(freqs))
 ```
+
+The mean of the relative frequency for bigrams is `r mean(freqs / sum(freqs))`, whereas its standard deviation is `r sd(freqs / sum(freqs))`.
+We can see that the mean for unigrams is higher, and the standard deviation is bigger as well. It means that on average
+there are more important high frequency features than in the case of bigrams. Also there is more dispersion of frequency values
+for unigrams than for bigrams. The majority of words have low frequency, although there is a set of very high-frequency
+words. 2-grams show a similar pattern, but tend to have lower on average, better spread frequencies.
 
 ```{r echo=FALSE}
 rm(freqs)
@@ -319,3 +330,15 @@ and bigrams:
 ```{r echo=FALSE}
 g
 ```
+
+Both distributions are right skewed (towards higher frequencies). It's more true for the case of unigrams, whose right tail is 'heavier'.
+
+
+
+## Conclusion
+
+Our exploration of feature frequencies shows that the most frequent words 'dominate' over the rest to a greater extent than the most 
+frequent bigrams do so over the rest of bigrams. It's true for higher order n-grams as well. The greater n, the more 'spread' the distribution
+of frequencies is among features.
+In practical terms, it's easy to select some small number of high-frequency words covering the corpus almost entirely. The bigger n of
+the n-gram, the the harder this task gets.
