@@ -11,31 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-In this milestone report we present an overview and exploratory analysis of the three files
-we use to build our predictive model. These files represent text corpora extracted from
-blogs, news and tweets in English.
+In this milestone report we present an overview and exploratory analysis of the text corpus
+we use to build our predictive model. In the Section 1 we explore the distribution of
+1-, 2-, 3- and 4-grams in the overall corpus. Section 2 is an overview of the three files
+used to build the corpus (they represent extracts from blogs, news and tweets in English).
+Then we draw some conclusions on the observed distributions and outline further steps
+in building the predictive model.
 
-## Files overview
+This report is totally reproducible. You can find all the code 
+in [this repository](https://github.com/ivanlis/yellow_dog_predictor). 
+To work with corpora and n-grams, we use the quanteda R package.
 
-To see what the lines of every file look like we use a simple function called computeLineStats(). 
-The minimum, maximum, average line length as well as line counts are as follows:
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
-source("../TextFileTools/computeLineStats.R")
-fileNames <- c(
-    "../materials/datasets/final/en_US/en_US.blogs.txt",
-    "../materials/datasets/final/en_US/en_US.news.txt",
-    "../materials/datasets/final/en_US/en_US.twitter.txt"
-)
-fileDescr <- c("Blogs", "News", "Twitter")
-linestats <- computeLineStats(fileNames, fileDescr)
-linestats
-```
-
-We can see that the line length average is similar in the blogs and news texts included in
-the corpora. On the opposite, no line belonging to the tweets exceeds 140 characters.
-
-## Loading and feature extraction
+## 1 Loading and feature extraction
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 rebuildFiles <- FALSE
@@ -46,8 +34,8 @@ memory. We've been performing the loading task on a PC with 8 GB RAM (actually l
 As it is impossible to load all the three files into the memory and perform operations on them,
 we divide each one into chunks. Our splitFiles() function is in charge of doing that.
 
-Then we execute the extractFeatures(). When we are finished, we have the document-feature matrices
-(DFMs) of n-grams stored on the disk. They will be the base of our further research.
+Then we execute the extractFeatures(). When it is finished, we have the document-feature matrices
+(DFMs) of n-grams stored on the disk. They will be the base for our further research.
 
 Pre-processing is done in several steps:
 - Load a chunk file, create a quanteda corpus. Reshape it by sentence. 
@@ -59,7 +47,7 @@ Pre-processing is done in several steps:
 - Merge the DFMs for all the chunks. This way we have 4 DFMs, one for each n-gram type.
 
 We process all the unigrams and bigrams.
-For 3- and 4-grams we keep only 60% of the most frequent features due to memory restrictions.
+For 3- and 4-grams we keep nearly 60% of the most frequent features due to memory restrictions.
 
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 source("../TextFileTools/splitFiles.R")
@@ -129,7 +117,7 @@ g <- ggplot(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs), z = 
     labs(x = "num. feature", y = "frequency")
 ```
 
-Our preprocessing step detected `r length(freqs)` different words. 
+Our preprocessing step left `r length(freqs)` different words. 
 All of them account for `r sum(freqs)` entries.
 The most frequent words are the following:
 
@@ -259,7 +247,7 @@ The most frequent 4-grams are the following:
 head(freqs, 20)
 ```
 
-Among our fitered 4-grams, these are the less frequent:
+These are the less frequent among our fitered 4-grams:
 
 ```{r message=FALSE, echo=FALSE}
 tail(freqs, 5)
@@ -320,8 +308,8 @@ summary(freqs / sum(freqs))
 The mean of the relative frequency for bigrams is `r mean(freqs / sum(freqs))`, whereas its standard deviation is `r sd(freqs / sum(freqs))`.
 We can see that the mean for unigrams is higher, and the standard deviation is bigger as well. It means that on average
 there are more important high frequency features than in the case of bigrams. Also there is more dispersion of frequency values
-for unigrams than for bigrams. The majority of words have low frequency, although there is a set of very high-frequency
-words. 2-grams show a similar pattern, but tend to have lower on average, better spread frequencies.
+for unigrams in comparison with bigrams. The majority of words have low frequency, although there is a set of very high-frequency
+words. 2-grams show a similar pattern, but tend to have lower on average, less dispersed frequencies.
 
 ```{r echo=FALSE}
 rm(freqs)
@@ -341,14 +329,42 @@ and bigrams:
 g
 ```
 
-Both distributions are right skewed (towards higher frequencies). It's more true for the case of unigrams, whose right tail is 'heavier'.
+Both distributions are right skewed (towards higher frequencies). This efect is stronger in the case of unigrams: the right tail is 'heavier'.
+
+
+## Files overview
+
+To see what the lines of every file look like we use a simple function called computeLineStats(). 
+The minimum, maximum, average line length as well as line counts are as follows:
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+source("../TextFileTools/computeLineStats.R")
+fileNames <- c(
+    "../materials/datasets/final/en_US/en_US.blogs.txt",
+    "../materials/datasets/final/en_US/en_US.news.txt",
+    "../materials/datasets/final/en_US/en_US.twitter.txt"
+)
+fileDescr <- c("Blogs", "News", "Twitter")
+linestats <- computeLineStats(fileNames, fileDescr)
+linestats
+```
+
+We can see that the line length average is similar in the blogs and news texts included in
+the corpora. On the opposite, no line belonging to the tweets exceeds 140 characters.
 
 
 
-## Conclusion
+## Conclusion and plans for development
 
 Our exploration of feature frequencies shows that the most frequent words 'dominate' over the rest to a greater extent than the most 
 frequent bigrams do so over the rest of bigrams. It's true for higher order n-grams as well. The greater n, the more 'spread' the distribution
 of frequencies is among features.
 In practical terms, it's easy to select some small number of high-frequency words covering the corpus almost entirely. The bigger n of
 the n-gram, the the harder this task gets.
+
+The next steps to perform in the development of our predictive model are the following:
+- Decide on the smoothing/backoff method to treat unknown features and combine the use of higher and lower order n-grams;
+- Store the learned n-grams in a database for their fast extraction. This database has to be small enough to be loaded to the main memory. 
+Here we'll have to limit the number of features using the findings of this exploratory analysis;
+- Develop the scheme of model evaluation on a test data set;
+- Develop the functions predicting word(s) based on the user input.

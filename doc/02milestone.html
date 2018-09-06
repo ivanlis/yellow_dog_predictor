@@ -170,7 +170,10 @@ if (rebuildFiles)
                     buildMatrices = FALSE,
                     mergeMatrices = TRUE,
                     mergeFiltered = TRUE)
-}</code></pre>
+}
+
+file.copy(list.files(path = &quot;../results&quot;, pattern = &quot;generalDfm*&quot;, full.names = TRUE, recursive = FALSE), &quot;../results/dfm&quot;)</code></pre>
+<pre><code>## [1] FALSE FALSE FALSE FALSE</code></pre>
 <p>TODO: explain the steps performed by extractFeatures()</p>
 </div>
 <div id="distribution-analysis-of-the-overall-corpus" class="section level2">
