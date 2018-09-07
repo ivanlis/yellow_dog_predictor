@@ -12,8 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Introduction
 
 In this milestone report we present an overview and exploratory analysis of the text corpus
-we use to build our predictive model. In the Section 1 we explore the distribution of
-1-, 2-, 3- and 4-grams in the overall corpus. Section 2 is an overview of the three files
+we use to build our predictive model. We briefly describe the loading and preprocessing step
+in Section 1. In Section 2 we explore the distribution of
+1-, 2-, 3- and 4-grams in the overall corpus. Section 3 is an overview of the three files
 used to build the corpus (they represent extracts from blogs, news and tweets in English).
 Then we draw some conclusions on the observed distributions and outline further steps
 in building the predictive model.
@@ -26,6 +27,7 @@ To work with corpora and n-grams, we use the quanteda R package.
 ## 1 Loading and feature extraction
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Set this to true if you want to build/rebuild tokens, DFMs etc.
 rebuildFiles <- FALSE
 ```
 
@@ -34,14 +36,15 @@ memory. We've been performing the loading task on a PC with 8 GB RAM (actually l
 As it is impossible to load all the three files into the memory and perform operations on them,
 we divide each one into chunks. Our splitFiles() function is in charge of doing that.
 
-Then we execute the extractFeatures(). When it is finished, we have the document-feature matrices
+Then we execute extractFeatures(). When it is finished, we have the document-feature matrices
 (DFMs) of n-grams stored on the disk. They will be the base for our further research.
 
 Pre-processing is done in several steps:
+
 - Load a chunk file, create a quanteda corpus. Reshape it by sentence. 
-- Tokenize the corpus, only removing punctuation. Let's call these tokens "raw".
+- Tokenize the corpus into unigrams, only removing punctuation. Let's call these tokens "raw".
 - For each n = 1..4 build n-gram tokens out of the raw tokens.
-- Filter these tokens: remove profane words, remove words containing non-alphabetic characters
+- Filter these tokens: remove profane words, remove tokens containing non-alphabetic characters
 (except for the apostrophe and hyphen)
 - Build a document-feature matrix (DFM) for the current corpus and current n.
 - Merge the DFMs for all the chunks. This way we have 4 DFMs, one for each n-gram type.
@@ -69,13 +72,13 @@ if (rebuildFiles)
                     buildMatrices = FALSE,
                     mergeMatrices = TRUE,
                     mergeFiltered = TRUE)
-}
 
-file.copy(list.files(path = "../results", pattern = "generalDfm*", full.names = TRUE, recursive = FALSE), "../results/dfm")
+    file.copy(list.files(path = "../results", pattern = "generalDfm*", full.names = TRUE, recursive = FALSE), "../results/dfm")    
+}
 ```
 
 
-## Distribution analysis of the overall corpus
+## 2 Distribution analysis of the overall corpus
 
 In this section we'll explore how the frequencies of the features (1-, 2-, 3- and 4-grams) are distributed.
 We use our loadFrequencies() function which reads a DFM from a file and
@@ -169,7 +172,7 @@ g <- g + geom_line(data = data.frame(x = 1:dsize, y = freqs[1:dsize] / sum(freqs
 ```
 
 The number of different bigrams is `r length(freqs)`, the overall number of their entries is `r sum(freqs)`.
-90% and 50% of the entries correspond to `r sufficient90` and `r sufficient50` most frequent bigrams.
+90% and 50% of the entries correspond to `r sufficient90` and `r sufficient50` most frequent bigrams respectively.
 The most frequent bigram is `r names(freqs)[1]`, its relative frequency is `r freqs[1] / sum(freqs)`.
 Other frequent bigrams are the following:
 
@@ -358,88 +361,98 @@ the corpora. On the opposite, no line belonging to the tweets exceeds 140 charac
 
 Let's explore n-gram tokens for the three files our corpus consists of.
 We analyze the tokens computed after dividing the correspondent corpus into sentences.
-Tokens containing punctuation, numbers, profane words are deleted.
+Tokens containing punctuation, numbers and profane words are deleted.
 
 
 ```{r echo = FALSE, message=FALSE}
-# here we will store the number of types and number of tokens
-vocab <- data.frame(docName = rep(c("Blogs", "News", "Tweets"), 4),
-                    nGram = c(rep(1, 3), rep(2, 3), rep(3, 3), rep(4, 3)), nTypes = rep(0, 12), nTokens = rep(0, 12))
+vocab <- data.frame()
+frequentNgrams <- data.frame()
 
-# here we will store the 10 most frequent features
-frequentNgrams <- data.frame(docName = rep(c(rep("Blogs", 10), rep("News", 10), rep("Tweets", 10)), 4),
-                             nGram = rep(c(rep(1, 30), rep(2, 30), rep(3, 30), rep(4,30))),
-                             entry = rep("", 120), rank = rep(0, 120), stringsAsFactors = FALSE
-                             )
-
-freqs <- dfmsToFreq("../results", "../results/freq1_blogs.dat", 1, 0:3)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 1, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq1_news.dat", 1, 4:8)
-vocab[vocab$docName == "News" & vocab$nGram == 1, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "News" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq1_tweets.dat", 1, 9:18)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 1, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
-
-
-freqs <- dfmsToFreq("../results", "../results/freq2_blogs.dat", 2, 0:3)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 2, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq2_news.dat", 2, 4:8)
-vocab[vocab$docName == "News" & vocab$nGram == 2, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "News" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq2_tweets.dat", 2, 9:18)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 2, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
-
-
-freqs <- dfmsToFreq("../results", "../results/freq3_blogs.dat", 3, 0:3)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 3, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq3_news.dat", 3, 4:8)
-vocab[vocab$docName == "News" & vocab$nGram == 3, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "News" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq3_tweets.dat", 3, 9:18)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 3, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
-
-
-freqs <- dfmsToFreq("../results", "../results/freq4_blogs.dat", 4, 0:3)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 4, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Blogs" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq4_news.dat", 4, 4:8)
-vocab[vocab$docName == "News" & vocab$nGram == 4, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "News" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
-freqs <- dfmsToFreq("../results", "../results/freq4_tweets.dat", 4, 9:18)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 4, "nTypes"] <- length(freqs)
-vocab[vocab$docName == "Tweets" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
-frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
-
-rm(freqs)
+if (!file.exists("../results/vocab.csv") || !file.exists("../results/frequentNgrams.csv"))
+{
+    # here we will store the number of types and number of tokens
+    vocab <- data.frame(docName = rep(c("Blogs", "News", "Tweets"), 4),
+                        nGram = c(rep(1, 3), rep(2, 3), rep(3, 3), rep(4, 3)), nTypes = rep(0, 12), nTokens = rep(0, 12))
+    
+    # here we will store the 10 most frequent features
+    frequentNgrams <- data.frame(docName = rep(c(rep("Blogs", 10), rep("News", 10), rep("Tweets", 10)), 4),
+                                 nGram = rep(c(rep(1, 30), rep(2, 30), rep(3, 30), rep(4,30))),
+                                 entry = rep("", 120), rank = rep(0, 120), stringsAsFactors = FALSE
+                                 )
+    
+    freqs <- dfmsToFreq("../results", "../results/freq1_blogs.dat", 1, 0:3)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 1, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq1_news.dat", 1, 4:8)
+    vocab[vocab$docName == "News" & vocab$nGram == 1, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "News" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq1_tweets.dat", 1, 9:18)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 1, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 1, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 1, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 1, "rank"] <- 1:10
+    
+    
+    freqs <- dfmsToFreq("../results", "../results/freq2_blogs.dat", 2, 0:3)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 2, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq2_news.dat", 2, 4:8)
+    vocab[vocab$docName == "News" & vocab$nGram == 2, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "News" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq2_tweets.dat", 2, 9:18)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 2, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 2, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 2, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 2, "rank"] <- 1:10
+    
+    
+    freqs <- dfmsToFreq("../results", "../results/freq3_blogs.dat", 3, 0:3)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 3, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq3_news.dat", 3, 4:8)
+    vocab[vocab$docName == "News" & vocab$nGram == 3, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "News" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq3_tweets.dat", 3, 9:18)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 3, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 3, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 3, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 3, "rank"] <- 1:10
+    
+    
+    freqs <- dfmsToFreq("../results", "../results/freq4_blogs.dat", 4, 0:3)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 4, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Blogs" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Blogs" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq4_news.dat", 4, 4:8)
+    vocab[vocab$docName == "News" & vocab$nGram == 4, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "News" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "News" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
+    freqs <- dfmsToFreq("../results", "../results/freq4_tweets.dat", 4, 9:18)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 4, "nTypes"] <- length(freqs)
+    vocab[vocab$docName == "Tweets" & vocab$nGram == 4, "nTokens"] <- sum(freqs)
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 4, "entry"] <- names(freqs)[1:10]
+    frequentNgrams[frequentNgrams$docName == "Tweets" & frequentNgrams$nGram  == 4, "rank"] <- 1:10
+    
+    rm(freqs)
+} else
+{
+    vocab <- read.csv("../results/vocab.csv")
+    frequentNgrams <- read.csv("../results/frequentNgrams.csv")
+}
 
 library(tidyr)
 frequentNgrams <- frequentNgrams %>% spread(nGram, entry)
@@ -487,17 +500,27 @@ The most frequent n-grams:
 frequentNgrams[frequentNgrams$docName == "Tweets", -which(names(frequentNgrams) %in% c("docName", "rank"))]
 ```
 
+Having a look at the most frequent n-grams suggests that the Blogs and News corpora have more similarities between
+them as opposed to the language of tweets. As for unigrams, the lists are quite similar between all the corpora,
+except for the use of pronouns ('I', 'you'). At the bigram level we see more differences, When it comes to the 
+10 most frequent trigrams, we observe clear divergence between the Tweets on one side and Blogs and News on the other.
+The 4-grams reveal each corpus language nature, once more emphasizing the peculiarities of the 'Twitter language'.
+ 
+
 ## Conclusion and plans for development
 
 Our exploration of feature frequencies shows that the most frequent words 'dominate' over the rest to a greater extent than the most 
 frequent bigrams do so over the rest of bigrams. It's true for higher order n-grams as well. The greater n, the more 'spread' the distribution
 of frequencies is among features.
 In practical terms, it's easy to select some small number of high-frequency words covering the corpus almost entirely. The bigger n of
-the n-gram, the the harder this task gets.
+the n-gram, the harder this task gets.
+
+Having a look at the most frequent n-grams, we notice heterogeneity in our corpus, especially regarding the tweets
+language. It should be helpful, because more speech genres are covered.
 
 The next steps to perform in the development of our predictive model are the following:
+
 - Decide on the smoothing/backoff method to treat unknown features and combine the use of higher and lower order n-grams;
-- Store the learned n-grams in a database for their fast extraction. This database has to be small enough to be loaded to the main memory. 
-Here we'll have to limit the number of features using the findings of this exploratory analysis;
+- Store the learned n-grams in a database for their fast extraction. This database has to be small enough to be loaded to the main memory. Here we'll have to limit the number of features using the findings of this exploratory analysis;
 - Develop the scheme of model evaluation on a test data set;
 - Develop the functions predicting word(s) based on the user input.
