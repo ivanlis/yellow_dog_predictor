@@ -127,19 +127,26 @@ $(document).ready(function () {
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>In this milestone report we present an overview and exploratory analysis of the text corpus we use to build our predictive model. In the Section 1 we explore the distribution of 1-, 2-, 3- and 4-grams in the overall corpus. Section 2 is an overview of the three files used to build the corpus (they represent extracts from blogs, news and tweets in English). Then we draw some conclusions on the observed distributions and outline further steps in building the predictive model.</p>
+<p>In this milestone report we present an overview and exploratory analysis of the text corpus we use to build our predictive model. We briefly describe the loading and preprocessing step in Section 1. In Section 2 we explore the distribution of 1-, 2-, 3- and 4-grams in the overall corpus. Section 3 is an overview of the three files used to build the corpus (they represent extracts from blogs, news and tweets in English). Then we draw some conclusions on the observed distributions and outline further steps in building the predictive model.</p>
 <p>This report is totally reproducible. You can find all the code in <a href="https://github.com/ivanlis/yellow_dog_predictor">this repository</a>. To work with corpora and n-grams, we use the quanteda R package.</p>
 </div>
 <div id="loading-and-feature-extraction" class="section level2">
 <h2>1 Loading and feature extraction</h2>
 <p>An important problem arising when trying to load the corpora is the limited size of the main memory. We’ve been performing the loading task on a PC with 8 GB RAM (actually less available to R). As it is impossible to load all the three files into the memory and perform operations on them, we divide each one into chunks. Our splitFiles() function is in charge of doing that.</p>
-<p>Then we execute the extractFeatures(). When it is finished, we have the document-feature matrices (DFMs) of n-grams stored on the disk. They will be the base for our further research.</p>
-<p>Pre-processing is done in several steps: - Load a chunk file, create a quanteda corpus. Reshape it by sentence. - Tokenize the corpus, only removing punctuation. Let’s call these tokens “raw”. - For each n = 1..4 build n-gram tokens out of the raw tokens. - Filter these tokens: remove profane words, remove words containing non-alphabetic characters (except for the apostrophe and hyphen) - Build a document-feature matrix (DFM) for the current corpus and current n. - Merge the DFMs for all the chunks. This way we have 4 DFMs, one for each n-gram type.</p>
+<p>Then we execute extractFeatures(). When it is finished, we have the document-feature matrices (DFMs) of n-grams stored on the disk. They will be the base for our further research.</p>
+<p>Pre-processing is done in several steps:</p>
+<ul>
+<li>Load a chunk file, create a quanteda corpus. Reshape it by sentence.</li>
+<li>Tokenize the corpus into unigrams, only removing punctuation. Let’s call these tokens “raw”.</li>
+<li>For each n = 1..4 build n-gram tokens out of the raw tokens.</li>
+<li>Filter these tokens: remove profane words, remove tokens containing non-alphabetic characters (except for the apostrophe and hyphen)</li>
+<li>Build a document-feature matrix (DFM) for the current corpus and current n.</li>
+<li>Merge the DFMs for all the chunks. This way we have 4 DFMs, one for each n-gram type.</li>
+</ul>
 <p>We process all the unigrams and bigrams. For 3- and 4-grams we keep nearly 60% of the most frequent features due to memory restrictions.</p>
-<pre><code>## [1] FALSE FALSE FALSE FALSE</code></pre>
 </div>
 <div id="distribution-analysis-of-the-overall-corpus" class="section level2">
-<h2>Distribution analysis of the overall corpus</h2>
+<h2>2 Distribution analysis of the overall corpus</h2>
 <p>In this section we’ll explore how the frequencies of the features (1-, 2-, 3- and 4-grams) are distributed. We use our loadFrequencies() function which reads a DFM from a file and converts it into a vector of frequency values sorted in descendant order.</p>
 <div id="words" class="section level3">
 <h3>Words</h3>
@@ -158,7 +165,7 @@ $(document).ready(function () {
 </div>
 <div id="bigrams" class="section level3">
 <h3>Bigrams</h3>
-<p>The number of different bigrams is 13124767, the overall number of their entries is 9.104010110^{7}. 90% and 50% of the entries correspond to 4.02075710^{6} and 3.466510^{4} most frequent bigrams. The most frequent bigram is of_the, its relative frequency is 0.004722. Other frequent bigrams are the following:</p>
+<p>The number of different bigrams is 13124767, the overall number of their entries is 9.104010110^{7}. 90% and 50% of the entries correspond to 4.02075710^{6} and 3.466510^{4} most frequent bigrams respectively. The most frequent bigram is of_the, its relative frequency is 0.004722. Other frequent bigrams are the following:</p>
 <pre><code>##   of_the   in_the   to_the  for_the   on_the    to_be   at_the  and_the 
 ##   429895   407258   212966   200790   196143   161986   142363   125694 
 ##     in_a with_the     is_a   it_was    for_a from_the   i_have    i_was 
@@ -250,7 +257,7 @@ $(document).ready(function () {
 </div>
 <div id="vocabulary-and-n-grams" class="section level3">
 <h3>Vocabulary and n-grams</h3>
-<p>Let’s explore n-gram tokens for the three files our corpus consists of. We analyze the tokens computed after dividing the correspondent corpus into sentences. Tokens containing punctuation, numbers, profane words are deleted.</p>
+<p>Let’s explore n-gram tokens for the three files our corpus consists of. We analyze the tokens computed after dividing the correspondent corpus into sentences. Tokens containing punctuation, numbers and profane words are deleted.</p>
 </div>
 <div id="blogs" class="section level3">
 <h3>Blogs</h3>
@@ -314,12 +321,20 @@ $(document).ready(function () {
 ## 28  in     at_the          i_want_to    for_the_first_time
 ## 29  of     i_love           a_lot_of      have_a_great_day
 ## 30  is   going_to            to_be_a       hope_to_see_you</code></pre>
+<p>Having a look at the most frequent n-grams suggests that the Blogs and News corpora have more similarities between them as opposed to the language of tweets. As for unigrams, the lists are quite similar between all the corpora, except for the use of pronouns (‘I’, ‘you’). At the bigram level we see more differences, When it comes to the 10 most frequent trigrams, we observe clear divergence between the Tweets on one side and Blogs and News on the other. The 4-grams reveal each corpus language nature, once more emphasizing the peculiarities of the ‘Twitter language’.</p>
 </div>
 </div>
 <div id="conclusion-and-plans-for-development" class="section level2">
 <h2>Conclusion and plans for development</h2>
-<p>Our exploration of feature frequencies shows that the most frequent words ‘dominate’ over the rest to a greater extent than the most frequent bigrams do so over the rest of bigrams. It’s true for higher order n-grams as well. The greater n, the more ‘spread’ the distribution of frequencies is among features. In practical terms, it’s easy to select some small number of high-frequency words covering the corpus almost entirely. The bigger n of the n-gram, the the harder this task gets.</p>
-<p>The next steps to perform in the development of our predictive model are the following: - Decide on the smoothing/backoff method to treat unknown features and combine the use of higher and lower order n-grams; - Store the learned n-grams in a database for their fast extraction. This database has to be small enough to be loaded to the main memory. Here we’ll have to limit the number of features using the findings of this exploratory analysis; - Develop the scheme of model evaluation on a test data set; - Develop the functions predicting word(s) based on the user input.</p>
+<p>Our exploration of feature frequencies shows that the most frequent words ‘dominate’ over the rest to a greater extent than the most frequent bigrams do so over the rest of bigrams. It’s true for higher order n-grams as well. The greater n, the more ‘spread’ the distribution of frequencies is among features. In practical terms, it’s easy to select some small number of high-frequency words covering the corpus almost entirely. The bigger n of the n-gram, the harder this task gets.</p>
+<p>Having a look at the most frequent n-grams, we notice heterogeneity in our corpus, especially regarding the tweets language. It should be helpful, because more speech genres are covered.</p>
+<p>The next steps to perform in the development of our predictive model are the following:</p>
+<ul>
+<li>Decide on the smoothing/backoff method to treat unknown features and combine the use of higher and lower order n-grams;</li>
+<li>Store the learned n-grams in a database for their fast extraction. This database has to be small enough to be loaded to the main memory. Here we’ll have to limit the number of features using the findings of this exploratory analysis;</li>
+<li>Develop the scheme of model evaluation on a test data set;</li>
+<li>Develop the functions predicting word(s) based on the user input.</li>
+</ul>
 </div>
 
 
