@@ -1,13 +1,32 @@
-#library(data.table)
+library(data.table)
 library(quanteda)
 ##TODO: path to script???
 source("../nGram/loadFrequencies.R")
 
 
+belongsToVocab <- function(ngram, ngramType, vocab)
+{
+    splitRes <- strsplit(ngram, "_")[[1]]
+    if (length(splitRes) != ngramType)
+        return(FALSE)
+    res = TRUE
+    for (term in splitRes)
+    {
+        #if (nchar(term) == 0 || !(term %in% vocab))
+        if (nchar(term) == 0 || nrow(vocab[word == term, nomatch = 0]) == 0)
+        {
+            res = FALSE
+            break
+        }
+    }
+    return(res)
+}
+
+
 filterVocabulary <- function(matrixDirectory = "../results/dfm",
                  resultsDirectory = "../results",
                  ngramsToFilter = c(2, 3, 4),
-                 vocabLimit = 0.95,
+                 vocabLimit = 0.9,
                  update = FALSE)
 {
     freqs1 <- NA
@@ -39,11 +58,12 @@ filterVocabulary <- function(matrixDirectory = "../results/dfm",
         message("Loaded. Number of features: ", length(freqs1), ".")
     }
     
-    ## Store the selected vocabulary in a data table.
-    #freq1 <- data.table(word = names(freq1[1:K1]), probability = freq1[1:K1])
-    #setkey(freq1, word)
+    # Store the selected vocabulary in a data table.
+    freqs1 <- data.table(word = names(freqs1), probability = freqs1)
+    setkey(freqs1, word)
     
     message(length(ngramsToFilter))
+    
     
     for (ngramType in ngramsToFilter)
     {
@@ -51,6 +71,7 @@ filterVocabulary <- function(matrixDirectory = "../results/dfm",
                             pattern = sprintf("dfm%d_*", ngramType), 
                             full.names = TRUE, 
                             recursive = FALSE)
+        cnt <- 0
         for (f in files)
         {
             dfmFile <- file(f, "r")
@@ -64,17 +85,24 @@ filterVocabulary <- function(matrixDirectory = "../results/dfm",
             
             message("Before: ", nfeat(dfMatrix), ".")
             #TODO: split n-grams
-            dfMatrix <- dfMatrix[, featnames(dfMatrix) %in% names(freqs1)]
+            #belong <- sapply(featnames(dfMatrix), function(el) { belongsToVocab(el, ngramType, names(freqs1)) },
+            #                 USE.NAMES = FALSE)
+            belong <- sapply(featnames(dfMatrix), function(el) { belongsToVocab(el, ngramType, freqs1) },
+                             USE.NAMES = FALSE)            
+            
+            dfMatrix <- dfMatrix[, belong]
             message("After: ", nfeat(dfMatrix))
             
             #freqs <- colSums(partMatr)            
             
-            outVocabPathname <- sprintf("%s/voc_%s", resultsDirectory, f)
+            outVocabPathname <- sprintf("%s/voc%d_%02d.dat", resultsDirectory, ngramType, cnt)
             message("Saving filtered DFM to " , outVocabPathname, "...")
             dfmFile <- file(outVocabPathname, "w")
             serialize(dfMatrix, dfmFile)
             close(dfmFile)
             message("Stored.")
+            
+            cnt <- cnt + 1
         }
     }
 }

@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+## Introductions
 
 In this milestone report we present an overview and exploratory analysis of the text corpus
 we use to build our predictive model. We briefly describe the loading and preprocessing step
