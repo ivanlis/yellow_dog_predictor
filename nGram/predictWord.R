@@ -92,3 +92,90 @@ predictWord <- function(database, string)
     list(bigramWords = bigramResult, trigramWords = trigramResult, 
          fourgramWords = fourgramResult)
 }
+
+findProb <- function(database, string)
+{
+    words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 4)
+    #message(words)
+    
+    unigramProb <- 0
+    bigramProb <- 0
+    trigramProb <- 0
+    fourgramProb <- 0
+    
+    if (length(words) >= 1)
+    {
+        searchWord1 <- words[length(words)]
+        unigramResult <- database$unigram[word == searchWord1, .(probability)]
+        #message(nrow(unigramResult))
+        unigramProb <- if (nrow(unigramResult) > 0)
+            unigramResult[1, probability]
+        else
+            0
+            
+        
+        
+        if (length(words) >= 2)
+        {
+            searchWord2 <- words[length(words) - 1]
+            
+            
+            bigramResult <- merge(
+                ((merge(database$unigram[word == searchWord2, .(id, word)], 
+                        database$bigram, by.x = "id", by.y = "id1")
+                  [,.(id2, probability)])),
+                database$unigram[word == searchWord1, .(id, word)], by.x = "id2", by.y = "id"
+            )[, .(probability)]
+            
+            bigramProb <-
+                if (nrow(bigramResult) > 0)
+                    bigramResult[1, probability]
+                else
+                    0
+                        
+            
+            
+            if (length(words) >= 3)
+            {
+                searchWord3 <- words[length(words) - 2]
+                
+                
+                trigramResult <- merge(
+                    merge(
+                        merge(database$unigram[word == searchWord3, .(id)], 
+                            database$trigram, by.x = "id", by.y = "id1")[,.(id2, id3, probability)],
+                        database$unigram[word == searchWord2, .(id)], by.x = "id2", by.y = "id")[, .(id3, probability)], 
+                    database$unigram[word == searchWord1, .(id)], by.x = "id3", by.y = "id")[, .(probability)]                
+                
+                trigramProb <- 
+                    if (nrow(trigramResult) > 0)
+                        trigramResult[1, probability]
+                    else
+                        0
+                
+                
+                if (length(words) >= 4)
+                {
+
+                    searchWord4 <- words[length(words) - 3]
+                    
+                    fourgramResult <- merge(merge(
+                        merge(
+                            merge(database$unigram[word == searchWord4, .(id)], 
+                                  database$fourgram, by.x = "id", by.y = "id1")[,.(id2, id3, id4, probability)],
+                            database$unigram[word == searchWord3, .(id)], by.x = "id2", by.y = "id")[, .(id3, id4, probability)], 
+                        database$unigram[word == searchWord2, .(id)], by.x = "id3", by.y = "id")[, .(id4, probability)],
+                        database$unigram[word == searchWord1, .(id)], by.x = "id4", by.y = "id")[, .(probability)]                
+                    
+                        fourgramProb <- 
+                            if (nrow(fourgramResult) > 0)
+                                fourgramResult[1, probability]
+                            else
+                            0                
+                }
+            }
+        }
+    }
+    
+    return(list(unigramProb = unigramProb, bigramProb = bigramProb, trigramProb = trigramProb, fourgramProb = fourgramProb))
+}
