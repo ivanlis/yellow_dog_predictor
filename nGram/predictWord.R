@@ -12,11 +12,30 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
     
    # message(names(counts))
     
+    k <- max(countsToDiscount)
+    #message("k = ", k)
+    
+    if (k < counts[, min(count)])
+    {
+        #message("Returning constant 1 discount function...")
+        return(function(r) { return(data.table(r = r, discount = rep(1.0, length(r)))) })
+    }
+        
+    n1 <- (counts[count == 1, featWithCount])[1]
+    #message("n1 = ", n1)
+    
     for (r in countsToDiscount)
     {
         nr <- (counts[count == r, featWithCount])[1]
         nrplus1 <- (counts[count == r + 1, featWithCount])[1]
-        counts[count == r, discount := ((r + 1) * nrplus1) / (r * nr)]
+        nkplus1 <- (counts[count == k + 1, featWithCount])[1]
+        
+        discount1 <- ((r + 1) * nrplus1) / (r * nr)
+        discountk <- (discount1 - (k + 1) * nkplus1 / n1) / (1 - (k + 1) * nkplus1 / n1) 
+        
+        #message("For r = ", r, ": discount1 = ", discount1, " discountk = ", discountk)
+        
+        counts[count == r, discount := discountk]
     }
     
     counts <- merge(counts, data.table(countsToDiscount = countsToDiscount), 
@@ -27,6 +46,7 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
             mergeRes <- (merge(data.table(r = r), counts, 
                                by.x = "r", by.y = "count", all.x = TRUE)
                          )[, .(r, discount = sapply(discount, function(el) { if (is.na(el)) {return(1)} else {return(el)} } ))]
+            #)[, .(r, discount)]
             return(mergeRes)
         }
     )
