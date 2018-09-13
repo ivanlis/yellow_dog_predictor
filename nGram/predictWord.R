@@ -7,6 +7,11 @@ fourgramsToSuggest = 50
 
 computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
 {
+    ##DEBUG!!!!!
+    #return(function(r) { return(data.table(r = r, discount = rep(1.0, length(r)))) })
+    
+    
+    
     counts <- (tableNgram[,.(featWithCount = .N), by = .(probability)])[order(probability), 
                                                                         .(count = probability, featWithCount, discount = 1)]
     
@@ -22,13 +27,14 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
     }
         
     n1 <- (counts[count == 1, featWithCount])[1]
+    nkplus1 <- (counts[count == k + 1, featWithCount])[1]
     #message("n1 = ", n1)
     
     for (r in countsToDiscount)
     {
         nr <- (counts[count == r, featWithCount])[1]
         nrplus1 <- (counts[count == r + 1, featWithCount])[1]
-        nkplus1 <- (counts[count == k + 1, featWithCount])[1]
+        
         
         discount1 <- ((r + 1) * nrplus1) / (r * nr)
         discountk <- (discount1 - (k + 1) * nkplus1 / n1) / (1 - (k + 1) * nkplus1 / n1) 
@@ -42,11 +48,11 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
                     by.x = "count", by.y = "countsToDiscount")[, .(count, discount)]
     
     return(
-        function(r) {
-            mergeRes <- (merge(data.table(r = r), counts, 
+        function(r1) {
+            mergeRes <- (merge(data.table(r = r1), counts, 
                                by.x = "r", by.y = "count", all.x = TRUE)
                          )[, .(r, discount = sapply(discount, function(el) { if (is.na(el)) {return(1)} else {return(el)} } ))]
-            #)[, .(r, discount)]
+#            )[r1]
             return(mergeRes)
         }
     )
@@ -55,6 +61,7 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
 
 loadDatabase <- function(ngramPath = "../results/tables")
 {
+    # Load tables from CSV files
     #tableWord <- fread(sprintf("%s/tableWord.csv", ngramPath))
     tableWord <- fread(sprintf("%s/tabvocab1.csv", ngramPath))
     setkey(tableWord, word)
@@ -69,13 +76,21 @@ loadDatabase <- function(ngramPath = "../results/tables")
     setkey(tableFourgram, id1, id2, id3)
     
     
+    # Compute some useful values
+    endOfSentenceCount <- tableWord[, sum(probability)] - tableBigram[, sum(probability)]
+    
+    
+    
     list(unigram = tableWord, bigram = tableBigram, 
          trigram = tableTrigram, fourgram = tableFourgram,
          
          unigramDiscount = computeDiscountFunc(1, tableWord, 1:5),
          bigramDiscount = computeDiscountFunc(2, tableBigram, 1:5),
          trigramDiscount = computeDiscountFunc(3, tableTrigram, 1:5),
-         fourgramDiscount = computeDiscountFunc(4, tableFourgram, 1:5))
+         fourgramDiscount = computeDiscountFunc(4, tableFourgram, 1:5),
+         
+         info = list(endOfSentenceCount = endOfSentenceCount))
+    
 }
 
 predictWord <- function(database, string)
@@ -247,15 +262,42 @@ predictWordKatz <- function(database, string)
     trigramResult <- character(0)
     fourgramResult <- character(0)
     
+    bigramCandidates  <- NA
+    trigramCandidates <- NA
+    fourgramCandidates <- NA
+    
     preUnigramCount <- 0
     preBigramCount <- 0
     preTrigramCount <- 0
+    
+    
+    # counts of n-grams with end of sentence
+    eosUnigrams <- database$info$endOfSentenceCount
+    eosBigrams <- 0
+    eosBigramCondprob <- 0
+    sumPredicted22 <- 0
+    sumPredicted21 <- 0
+    alpha1 <- 1
+    eosTrigrams <- 0
+    eosTrigramCondprob <- 0
+    sumPredicted33 <- 0
+    sumPredicted32 <- 0
+    alpha2 <- 1
+    eosFourgrams <- 0
+    eosFourgramCondprob <- 0
+    sumPredicted44 <- 0
+    sumPredicted43 <- 0
+    alpha3 <- 1
+    
+    stop <- FALSE
     
     if (length(words) >= 1)
     {
         searchWord1 <- words[length(words)]
         
         preUnigramCount <- (database$unigram[word == searchWord1, probability])[1]
+        message("preUnigramCount = ", preUnigramCount)
+        
         
         bigramCandidates <- merge(
             
@@ -270,17 +312,31 @@ predictWordKatz <- function(database, string)
                     database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
                     )[order(-count), .(id, word, count, condprob)]
         
-        message("preUnigramCount = ", preUnigramCount)
-                                 
+        if (nrow(bigramCandidates) > 0)
+        {
+            eosBigrams <- preUnigramCount - bigramCandidates[, sum(count)]
+            eosBigramCondprob <- eosBigrams * database$bigramDiscount(eosBigrams)[,discount] / preUnigramCount
+            sumPredicted22 <- bigramCandidates[, sum(condprob)] + eosBigramCondprob
+            #TODO: discount for unigrams
+            sumPredicted21 <- (merge(bigramCandidates[, .(id)], 
+                                     database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))],
+                                     by.x = "id", by.y = "id"))[, sum(condprob)]
+            alpha1 <- (1 - sumPredicted22) / (1 - sumPredicted21)
+            
+            message("Candidates from bigrams: ", nrow(bigramCandidates))
+            message("eosBigrams = ", eosBigrams, ", eosBigramCondprob = ", eosBigramCondprob)
+            message("sumPredicted22 = ", sumPredicted22, ", sumPredicted21 = ", sumPredicted21, ", alpha1 = ", alpha1)
+        } else
+            stop <- TRUE
         
-        
-        if (length(words) >= 2)
+        if (length(words) >= 2 && !stop)
         {
             searchWord2 <- words[length(words) - 1]
             
             preBigramCount <- (merge(merge(database$bigram, database$unigram[word == searchWord2, .(id, word)], 
                                            by.x = "id1", by.y = "id")[, .(id2, probability)], 
                                      database$unigram[word == searchWord1, .(id, word)], by.x = "id2", by.y = "id")[, probability])[1]
+            message("preBigramCount = ", preBigramCount)
             
             trigramCandidates <- merge( 
                 
@@ -292,50 +348,90 @@ predictWordKatz <- function(database, string)
                         database$unigram[word == searchWord1, .(id, word)],
                         by.x = "id2", by.y = "id")[,.(id = id3, count = probability, condprob = probability * 
                                                           database$trigramDiscount(probability)[, discount] 
-                                                      / preUnigramCount)],
+                                                      / preBigramCount)],
                         
                         
                         database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
                         )[order(-count), .(id, word, count, condprob)]
             
+            if (nrow(trigramCandidates) > 0)
+            {
+                eosTrigrams <- preBigramCount - trigramCandidates[, sum(count)]
+                eosTrigramCondprob <- eosTrigrams * database$trigramDiscount(eosTrigrams)[,discount] / preBigramCount
+                sumPredicted33 <- trigramCandidates[, sum(condprob)] + eosTrigramCondprob
+                sumPredicted32 <- merge(trigramCandidates[, .(id)], bigramCandidates[, .(id, condprob)])[, sum(condprob)] +
+                                                                                                        eosBigramCondprob
+                
+                alpha2 <- (1 - sumPredicted33) / (1 - sumPredicted32)
+                message("Candidates from trigrams: ", nrow(trigramCandidates))
+                message("eosTrigrams = ", eosTrigrams, ", eosTrigramCondprob = ", eosTrigramCondprob)
+                message("sumPredicted33 = ", sumPredicted33, ", sumPredicted32 = ", sumPredicted32, ", alpha2 = ", alpha2)
+            } else
+                stop <- TRUE
             
-            message("preBigramCount = ", preBigramCount)
-            
-            
-            
-            if (length(words) >= 3)
+            if (length(words) >= 3 && !stop)
             {
                 searchWord3 <- words[length(words) - 2]
                 
-                preTrigramCount <- (merge(merge(
+                preTrigramCount <- merge(merge(
                     merge(database$trigram, database$unigram[word == searchWord3, .(id, word)],
                           by.x = "id1", by.y = "id")[, .(id2, id3, probability)],
                     database$unigram[word == searchWord2, .(id, word)], 
                     by.x = "id2", by.y = "id")[, .(id3, probability)], 
-                    database$unigram[word == searchWord1, .(id, word)], by.x = "id3", by.y = "id")[1, probability])[1]
+                    database$unigram[word == searchWord1, .(id, word)], by.x = "id3", by.y = "id")[, .(probability)]
                 
-                fourgramCandidates <- merge( 
+                if (nrow(preTrigramCount) > 0)
+                {
+                    preTrigramCount <- preTrigramCount[1, probability]
                     
-                            merge(merge(merge(database$unigram[word == searchWord3, .(id, word)],
-                                        database$fourgram, by.x = "id", by.y = "id1")
-                                  [, .(id2, id3, id4, probability)],
-                                  
-                                  database$unigram[word == searchWord2, .(id, word)],
-                                  by.x = "id2", by.y = "id")[, .(id3, id4, probability)],
-                            database$unigram[word == searchWord1, .(id, word)],
-                            by.x = "id3", by.y = "id")[, .(id = id4, count = probability, condprob = probability * 
-                                                               database$fourgramDiscount(probability)[, discount] 
-                                                           / preUnigramCount)],
-                            
-                            
-                            database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
-                            )[order(-count), .(id, word, count, condprob)]
-                
-
-                message("preTrigramCount = ", preTrigramCount)
+                    message("preTrigramCount = ", preTrigramCount)
+                    
+                    
+                    fourgramCandidates <- merge( 
+                        
+                                merge(merge(merge(database$unigram[word == searchWord3, .(id, word)],
+                                            database$fourgram, by.x = "id", by.y = "id1")
+                                      [, .(id2, id3, id4, probability)],
+                                      
+                                      database$unigram[word == searchWord2, .(id, word)],
+                                      by.x = "id2", by.y = "id")[, .(id3, id4, probability)],
+                                database$unigram[word == searchWord1, .(id, word)],
+                                by.x = "id3", by.y = "id")[, .(id = id4, count = probability, condprob = probability * 
+                                                                   database$fourgramDiscount(probability)[, discount] 
+                                                               / preTrigramCount)],
+                                
+                                
+                                database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
+                                )[order(-count), .(id, word, count, condprob)]
+                    
+                    if (nrow(fourgramCandidates) > 0)
+                    {
+                        eosFourgrams <- preTrigramCount - fourgramCandidates[, sum(count)]
+                        eosFourgramCondprob <- eosFourgrams * database$fourgramDiscount(eosFourgrams)[,discount] / preTrigramCount
+                        sumPredicted44 <- fourgramCandidates[, sum(condprob)] + eosFourgramCondprob
+                        sumPredicted43 <- merge(fourgramCandidates[, .(id)], trigramCandidates[, .(id, condprob)],
+                                                by.x = "id", by.y = "id")[, sum(condprob)] + eosTrigramCondprob
+                        alpha3 <- (1 - sumPredicted44) / (1 - sumPredicted43)
+                        message("Candidates from fourgrams: ", nrow(fourgramCandidates))
+                        message("eosFourgrams = ", eosFourgrams, ", eosFourgramCondprob = ", eosFourgramCondprob)
+                        message("sumPredicted44 = ", sumPredicted44, ", sumPredicted43 = ", sumPredicted43, ", alpha3 = ", alpha3)
+                    } else
+                        stop <- TRUE
+                }
+                else
+                    stop <- TRUE
             }
         }
     }
     
-    list(bigramCandidates = bigramCandidates, trigramCandidates = trigramCandidates, fourgramCandidates = fourgramCandidates)
+    generalResult <- NA
+    if (is.data.table(bigramCandidates))
+        generalResult <- bigramCandidates[, .(id, word, count, katz = condprob * alpha3 * alpha2, origin = 2)]
+    if (is.data.table(trigramCandidates))
+        generalResult <- rbind(generalResult, trigramCandidates[, .(id, word, count, katz = condprob * alpha3, origin = 3)])
+    if (is.data.table(fourgramCandidates))
+        generalResult <- rbind(generalResult, fourgramCandidates[, .(id, word, count, katz = condprob, origin = 4)])
+    
+    list(bigramCandidates = bigramCandidates, trigramCandidates = trigramCandidates, fourgramCandidates = fourgramCandidates,
+         generalResult = generalResult[order(-katz)])
 }
