@@ -262,7 +262,9 @@ predictWordKatz <- function(database, string)
             
                     merge(database$unigram[word == searchWord1, .(id, word)], 
                     database$bigram, by.x = "id", by.y = "id1")[,.(id = id2, count = probability, 
-                                                                   condprob = probability / preUnigramCount)],
+                                                                   condprob = probability * 
+                                                                       database$bigramDiscount(probability)[, discount] 
+                                                                   / preUnigramCount)],
                     
                     
                     database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
@@ -288,7 +290,9 @@ predictWordKatz <- function(database, string)
                         [, .(id2, id3, probability)],
                         
                         database$unigram[word == searchWord1, .(id, word)],
-                        by.x = "id2", by.y = "id")[,.(id = id3, count = probability, condprob = probability / preBigramCount)],
+                        by.x = "id2", by.y = "id")[,.(id = id3, count = probability, condprob = probability * 
+                                                          database$trigramDiscount(probability)[, discount] 
+                                                      / preUnigramCount)],
                         
                         
                         database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
@@ -319,7 +323,9 @@ predictWordKatz <- function(database, string)
                                   database$unigram[word == searchWord2, .(id, word)],
                                   by.x = "id2", by.y = "id")[, .(id3, id4, probability)],
                             database$unigram[word == searchWord1, .(id, word)],
-                            by.x = "id3", by.y = "id")[, .(id = id4, count = probability, condprob = probability / preTrigramCount)],
+                            by.x = "id3", by.y = "id")[, .(id = id4, count = probability, condprob = probability * 
+                                                               database$fourgramDiscount(probability)[, discount] 
+                                                           / preUnigramCount)],
                             
                             
                             database$unigram[, .(wid = id, word)], by.x = "id", by.y = "wid"
