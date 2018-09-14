@@ -1,7 +1,7 @@
 ---
 title: "Exploratory Data Analysis of Text Corpus"
 author: "Ivan Lysiuchenko"
-date: "September 3, 2018"
+date: "September 14, 2018"
 output: html_document
 ---
 
