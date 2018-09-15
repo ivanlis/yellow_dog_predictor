@@ -623,10 +623,16 @@ predictWordKatz <- function(database, string)
         terms <- words[(length(words) - n + 2):length(words)]
         message("Terms: ", length(terms), ".")
         
+        results[[n]] <- list(candidates = NA, eosNgramCondprob = 0, alpha = 1.0)
+        
         preNgramCount <- selectNgramCount(database, terms)
         message("preNgramCount = ", preNgramCount)
+        if (preNgramCount == 0)
+            break
         candidatesN <- selectCandidates(database, terms, preNgramCount)
         message("candidatesN: ", nrow(candidatesN))
+        if (nrow(candidatesN) == 0)
+            break
         eosNgramCondprob <- computeEosCondProb(database, n, candidatesN, preNgramCount)
         message("eosNgramCondprob = ", eosNgramCondprob)
         results[[n]] <- list(candidates = candidatesN, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
@@ -652,8 +658,10 @@ predictWordKatz <- function(database, string)
             else
                 generalResult <- reformatted
         }
+        else
+            break
     }
 
     list(results = results,
-         generalResult = generalResult[order(-katz)])    
+         generalResult = (if (is.data.table(generalResult)) {generalResult[order(-katz)]} else {NA}))    
 }
