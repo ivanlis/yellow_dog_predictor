@@ -245,7 +245,7 @@ findProb <- function(database, string)
 
 
 
-predictWordKatz <- function(database, string)
+predictWordKatz1 <- function(database, string)
 {
     words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 3)
     
@@ -441,6 +441,8 @@ predictWordKatz <- function(database, string)
          generalResult = generalResult[order(-katz)])
 }
 
+
+
 ## Helper functions
 selectNgramCount <- function(database, terms)
 {
@@ -594,4 +596,21 @@ computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN,
     sumPredictedNNminus1 <- merge(candidatesN[, .(id)], candidatesNminus1[, .(id, condprob)],
                             by.x = "id", by.y = "id")[, sum(condprob)] + eosCondProbNminus1
     return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
+}
+
+
+predictWordKatz <- function(database, string)
+{
+    words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 3)
+    
+    maxOrder <- 4
+    
+    results <- vector(mode = "list", length = maxOrder)
+    
+    for (n in 2:maxOrder)
+    {
+        terms <- words[(length(words) - n + 2):length(words)]
+        
+        
+    }
 }
