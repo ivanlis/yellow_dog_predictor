@@ -440,3 +440,130 @@ predictWordKatz <- function(database, string)
     list(bigramCandidates = bigramCandidates, trigramCandidates = trigramCandidates, fourgramCandidates = fourgramCandidates,
          generalResult = generalResult[order(-katz)])
 }
+
+## Helper functions
+selectNgramCount <- function(database, terms)
+{
+    res <- 0
+    
+    # n-gram order
+    n <- length(terms)
+    
+    if (n == 3)
+    {
+        res <- merge(merge(
+            merge(database$trigram, database$unigram[word == terms[1], .(id, word)],
+                  by.x = "id1", by.y = "id")[, .(id2, id3, probability)],
+            database$unigram[word == terms[2], .(id, word)], 
+            by.x = "id2", by.y = "id")[, .(id3, probability)], 
+            database$unigram[word == terms[3], .(id, word)], by.x = "id3", by.y = "id")[, probability]
+    } else if (n == 2)
+    {
+        res <- merge(
+                   merge(database$bigram, database$unigram[word == terms[1], .(id, word)], 
+                                       by.x = "id1", by.y = "id")[, .(id2, probability)], 
+                   database$unigram[word == terms[2], .(id, word)], 
+                   by.x = "id2", by.y = "id")[, probability]
+        
+    } else if (n == 1)
+    {
+        res <- database$unigram[word == terms[1], probability]
+    } else if (n == 0)
+    {
+        uniCount <- database$unigram[, sum(probability)]
+        # take into account "end of sentence"
+        res <- uniCount + (uniCount - database$bigram[, sum(probability)])
+    }
+    
+    
+    if (length(res) == 0)
+        res <- 0
+    
+    return(res)
+}
+
+selectCandidates <- function(database, terms, preNgramCount = -1)
+{
+    res <- NA
+    n <- length(terms) + 1
+
+    if (preNgramCount < 0)
+    {
+        if (n > 2)
+            preNgramCount <- selectNgramCount(database, terms[1:(length(terms) - 1)])
+        else
+            preNgramCount <- selectNgramCount(database, character(0))
+    }
+    message("preNgramCount = ", preNgramCount)
+    
+    if (n == 4)
+    {
+        discountTable <- database$fourgramDiscount
+        
+        # by count to get the discount
+        res <- merge(
+                   # by id to get the word string
+                   merge(
+                       # by third word id
+                        merge(
+                            # by second word id
+                            merge(
+                                # by first word id
+                                merge(database$unigram[word == terms[1], .(id, word)],
+                              database$fourgram, by.x = "id", by.y = "id1")[, .(id2, id3, id4, probability)],
+                        
+                                database$unigram[word == terms[2], .(id, word)],
+                                by.x = "id2", by.y = "id")[, .(id3, id4, probability)],
+                        
+                        database$unigram[word == terms[3], .(id, word)],
+                        by.x = "id3", by.y = "id")[, .(id = id4, count = probability, 
+                                                 condprob1 = probability / preNgramCount)],
+            
+                    database$unigram[, .(wid = id, word)], 
+                    by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
+                by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]
+    } else if (n == 3)
+    {
+        discountTable <- database$trigramDiscount
+        # by count to get the discount
+        res <- merge(
+            # by id to get the word string
+            merge(
+                # by second word id
+                merge(
+                    # by first word id
+                    merge(
+                        database$trigram, database$unigram[word == terms[1], .(id, word)],
+                        by.x = "id1", by.y = "id")[, .(id2, id3, probability)],
+                    
+                    database$unigram[word == terms[2], .(id, word)],
+                    by.x = "id2", by.y = "id")[, .(id = id3, count = probability, 
+                                                   condprob1 = probability / preNgramCount)],
+                
+                database$unigram[, .(wid = id, word)], 
+                by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
+            by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
+        
+    } else if (n == 2)
+    {
+        discountTable <- database$bigramDiscount
+        # by count to get the discount
+        res <- merge(
+            # by id to get the word string
+            merge(
+                # by first word id
+                merge(
+                    database$bigram,
+                    database$unigram[word == terms[1], .(id, word)],
+                    by.x = "id1", by.y = "id")[, .(id = id2, count = probability, 
+                                                   condprob1 = probability / preNgramCount)],
+                
+                database$unigram[, .(wid = id, word)], 
+                by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
+            by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
+    }
+    
+}
+
+
+
