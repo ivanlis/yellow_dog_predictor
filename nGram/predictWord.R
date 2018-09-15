@@ -586,7 +586,7 @@ computeEosCondProb <- function(database, n, candidates, preNgramCount)
     if (length(eosDiscount) == 0)
         eosDiscount <- 1
     #message("eosNgrams: ", eosNgrams, " eosDiscount: ", eosDiscount)
-    return(eosNgrams * eosDiscount / preTrigramCount)    
+    return(eosNgrams * eosDiscount / preNgramCount)    
 }
 
 #TODO: test
@@ -607,10 +607,53 @@ predictWordKatz <- function(database, string)
     
     results <- vector(mode = "list", length = maxOrder)
     
+    eosUnigrams <- database$info$endOfSentenceCount
+    results[[1]] <- 
+        list(candidates = database$unigram[, .(id, condprob = probability / (sum(probability) + 
+                                                                                 eosUnigrams))],
+             eosNgramCondprob = eosUnigrams / (database$unigram[, sum(probability)] + eosUnigrams),
+             alpha = 1)
+    
+    database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))]
+    
+    
+    for (n in 2:min(maxOrder, length(words) + 1))
+    {
+        message("Processing n = ", n, "...")
+        terms <- words[(length(words) - n + 2):length(words)]
+        message("Terms: ", length(terms), ".")
+        
+        preNgramCount <- selectNgramCount(database, terms)
+        message("preNgramCount = ", preNgramCount)
+        candidatesN <- selectCandidates(database, terms, preNgramCount)
+        message("candidatesN: ", nrow(candidatesN))
+        eosNgramCondprob <- computeEosCondProb(database, n, candidatesN, preNgramCount)
+        message("eosNgramCondprob = ", eosNgramCondprob)
+        results[[n]] <- list(candidates = candidatesN, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
+        alpha <- computeAlpha(database, candidatesN, results[[n - 1]]$candidates, 
+                              eosNgramCondprob, results[[n - 1]]$eosNgramCondprob)
+
+        for (i in 1:(n - 1))
+            results[[i]]$alpha <- results[[i]]$alpha * alpha
+    }
+    
+    generalResult <- NA
     for (n in 2:maxOrder)
     {
-        terms <- words[(length(words) - n + 2):length(words)]
-        
-        
+        if (is.data.table(results[[n]]$candidates))
+        {
+            reformatted <- results[[n]]$candidates[, 
+                                                   .(id, word, count, 
+                                                     katz = condprob * results[[n - 1]]$alpha, 
+                                                     origin = n)]
+            
+            if (is.data.table(generalResult))
+                generalResult <- rbind(generalResult, reformatted)
+            else
+                generalResult <- reformatted
+        }
     }
+
+    list(results = results,
+         generalResult = generalResult[order(-katz)])    
 }
