@@ -494,7 +494,7 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
         else
             preNgramCount <- selectNgramCount(database, character(0))
     }
-    message("preNgramCount = ", preNgramCount)
+    #message("preNgramCount = ", preNgramCount)
     
     if (n == 4)
     {
@@ -563,7 +563,35 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
             by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
     }
     
+    return(res)
 }
 
+computeEosCondProb <- function(database, n, candidates, preNgramCount)
+{
+    discountTable <-
+        if (n == 1)
+            database$unigramDiscount
+        else if (n == 2)
+            database$bigramDiscount
+        else if (n == 3)
+            database$trigramDiscount
+        else if (n == 4)
+            database$fourgramDiscount
+        
+    
+    eosNgrams <- preNgramCount - candidates[, sum(count)]
+    eosDiscount <- discountTable[r == eosNgrams, discount]
+    if (length(eosDiscount) == 0)
+        eosDiscount <- 1
+    #message("eosNgrams: ", eosNgrams, " eosDiscount: ", eosDiscount)
+    return(eosNgrams * eosDiscount / preTrigramCount)    
+}
 
-
+#TODO: test
+computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN, eosCondProbNminus1)
+{
+    sumPredictedNN <- candidatesN[, sum(condprob)] + eosCondProbN
+    sumPredictedNNminus1 <- merge(candidatesN[, .(id)], candidatesNminus1[, .(id, condprob)],
+                            by.x = "id", by.y = "id")[, sum(condprob)] + eosCondProbNminus1
+    return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
+}
