@@ -85,6 +85,51 @@ loadDatabase <- function(ngramPath = "../results/tables")
     
 }
 
+
+getNgramTable <- function(database, n)
+{
+    if (n == 1)
+        return(database$unigram)
+    if (n == 2)
+        return(database$bigram)
+    if (n == 3)
+        return(database$trigram)
+    if (n == 4)
+        return(database$fourgram)
+    
+    return(NA)
+}
+
+getDiscountTable <- function(database, n)
+{
+    if (n == 1)
+        return(database$unigramDiscount)
+    if (n == 2)
+        return(database$bigramDiscount)
+    if (n == 3)
+        return(database$trigramDiscount)
+    if (n == 4)
+        return(database$fourgramDiscount)
+    
+    return(NA)    
+}
+
+getIds <- function(dbTable, n, i)
+{
+    if (n == 1)
+        return(c(dbTable[i, id]))
+    else if (n == 2)
+        return(c(dbTable[i, id1], dbTable[i, id2]))
+    else if (n == 3)
+        return(c(dbTable[i, id1], dbTable[i, id2], dbTable[i, id3]))
+    else if (n == 4)
+        return(c(dbTable[i, id1], dbTable[i, id2], dbTable[i, id3], dbTable[i, id4]))
+    else
+        return(integer(0))
+}
+
+
+
 predictWord <- function(database, string)
 {
     words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 3)
@@ -484,6 +529,39 @@ selectNgramCount <- function(database, terms)
     return(res)
 }
 
+## The same as selectNgram(), but use ids immediately
+selectNgramCountLight <- function(database, ids)
+{
+    res <- 0
+    
+    # n-gram order
+    n <- length(ids)
+    
+    if (n == 3)
+    {
+        res <- database$trigram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], probability]
+    } else if (n == 2)
+    {
+        res <- database$bigram[id1 == ids[1] & id2 == ids[2], probability]
+        
+    } else if (n == 1)
+    {
+        res <- database$unigram[id == ids[1], probability]
+    } else if (n == 0)
+    {
+        uniCount <- database$unigram[, sum(probability)]
+        # take into account "end of sentence"
+        res <- uniCount + (uniCount - database$bigram[, sum(probability)])
+    }
+    
+    
+    if (length(res) == 0)
+        res <- 0
+    
+    return(res)
+}
+
+
 selectCandidates <- function(database, terms, preNgramCount = -1)
 {
     res <- NA
@@ -568,6 +646,55 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
     return(res)
 }
 
+## The same as selectCandidates(), but without extracting strings
+selectCandidatesLight <- function(database, ids, preNgramCount = -1)
+{
+    #TODO: use ids instead of terms!!!
+    res <- NA
+    n <- length(ids) + 1
+    
+    if (preNgramCount < 0)
+    {
+        if (n > 2)
+            preNgramCount <- selectNgramCountLight(database, ids[1:(length(ids) - 1)])
+        else
+            preNgramCount <- selectNgramCountLight(database, character(0))
+    }
+    #message("preNgramCount = ", preNgramCount)
+    
+    if (n == 4)
+    {
+        discountTable <- database$fourgramDiscount
+        
+        # by count to get the discount
+        res <- merge(database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], 
+                                       .(id = id4, count = probability, 
+                                         condprob1 = probability / preNgramCount)], 
+                     discountTable, 
+            by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]
+    } else if (n == 3)
+    {
+        discountTable <- database$trigramDiscount
+        # by count to get the discount
+        res <- merge(database$trigram[id1 == ids[1] & id2 == ids[2],
+                     .(id = id3, count = probability, condprob1 = probability / preNgramCount)],
+                    discountTable, 
+            by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
+        
+    } else if (n == 2)
+    {
+        discountTable <- database$bigramDiscount
+        # by count to get the discount
+        res <- merge(database$bigram[id1 == ids[1], 
+                            .(id = id2, count = probability, condprob1 = probability / preNgramCount)], 
+                     discountTable, 
+            by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
+    }
+    
+    return(res)
+}
+
+
 computeEosCondProb <- function(database, n, candidates, preNgramCount)
 {
     discountTable <-
@@ -589,7 +716,6 @@ computeEosCondProb <- function(database, n, candidates, preNgramCount)
     return(eosNgrams * eosDiscount / preNgramCount)    
 }
 
-#TODO: test
 computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN, eosCondProbNminus1)
 {
     sumPredictedNN <- candidatesN[, sum(condprob)] + eosCondProbN
@@ -665,3 +791,88 @@ predictWordKatz <- function(database, string)
     list(results = results,
          generalResult = (if (is.data.table(generalResult)) {generalResult[order(-katz)]} else {NA}))    
 }
+
+setIdKeys <- function(database)
+{
+    setkey(database$unigram, id)
+    setkey(database$bigram, id1, id2)
+    setkey(database$trigram, id1, id2, id3)
+    setkey(database$fourgram, id1, id2, id3, id4)
+}
+
+## Compute alpha and store it as and additional column
+precomputeAlpha <- function(database, ngramPath = "../results/tables")
+{
+    setIdKeys(database)
+    
+    maxOrder <- 4
+    
+    for (n in 1:maxOrder)
+    {
+        message("Processing n = ", n, "...")
+        currentTable <- getNgramTable(database, n)
+        currentTable[, alpha := 1]
+        currentTable[, condprob := 0]
+        discountTable <- getDiscountTable(database, n)
+        if (n == maxOrder)
+            break;
+        
+        for (i in 1:nrow(currentTable))
+        {
+            if (i %% 10 == 0)
+                message("Processing row ", i, "...")
+            
+            ids <- getIds(currentTable, n, i)
+            
+            preNminus1count <- 0
+            
+            candidatesN <-
+                if (n == 1)
+                {
+                    database$unigram[, .(id, condprob = probability / (sum(probability) + 
+                                                                           database$info$endOfSentenceCount))]
+                } else
+                {
+                    # last n - 1 ids
+                    idsLower <- tail(ids, n - 1)
+                    preNminus1count <- selectNgramCountLight(database, idsLower)
+                    selectCandidatesLight(database, idsLower, preNminus1count)
+                }
+            
+            preNgramCount <- currentTable[i, probability]
+            candidatesNplus1 <- selectCandidatesLight(database, ids, preNgramCount)
+            
+            
+            eosNgramCondprob <- 
+                if (n == 1)
+                    database$info$endOfSentenceCount / 
+                        (database$unigram[, sum(probability)] + database$info$endOfSentenceCount)
+                else
+                    computeEosCondProb(database, n, candidatesN, preNminus1count)
+            
+            eosNplus1Condprob <- computeEosCondProb(database, n + 1, candidatesNplus1, preNgramCount)
+            
+            al <- computeAlpha(database, candidatesNplus1, candidatesN, 
+                                  eosNplus1Condprob, eosNgramCondprob)
+            
+            discount <- discountTable[r == currentTable[i, probability], discount]
+            #discount <- 1
+            if (length(discount) == 0)
+                discount <- 1
+            
+            lowerNgramCount <- 
+                if (n == 1)
+                    database$unigram[, sum(probability)] + database$info$endOfSentenceCount
+                else
+                    selectNgramCountLight(database, ids[1:(n - 1)])
+            
+            #currentTable[i, c("alpha", "condprob") := c(al, probability * discount / lowerNgramCount)]
+            currentTable[i, alpha := al]
+            currentTable[i, condprob := probability * discount / lowerNgramCount]
+        } # end loop by i
+        
+        tablePathname <- sprintf("%s/tabVocAlpha%d.csv", ngramPath, n)
+        write.csv(currentTable, tablePathname, row.names = FALSE)
+    }
+}
+
