@@ -905,7 +905,7 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             currentTable[i, condprob := probability * discount / lowerNgramCount]
         } # end loop by i
         
-        stopImplicitCluster()
+        #stopImplicitCluster()
         
         tablePathname <- sprintf("%s/tabVocAlpha%d.csv", ngramPath, n)
         write.csv(currentTable, tablePathname, row.names = FALSE)
