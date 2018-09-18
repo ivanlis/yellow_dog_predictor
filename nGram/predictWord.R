@@ -539,19 +539,19 @@ selectNgramCountLight <- function(database, ids)
     
     if (n == 3)
     {
-        res <- database$trigram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], probability]
+        res <- database$trigram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], count]
     } else if (n == 2)
     {
-        res <- database$bigram[id1 == ids[1] & id2 == ids[2], probability]
+        res <- database$bigram[id1 == ids[1] & id2 == ids[2], count]
         
     } else if (n == 1)
     {
-        res <- database$unigram[id == ids[1], probability]
+        res <- database$unigram[id == ids[1], count]
     } else if (n == 0)
     {
-        uniCount <- database$unigram[, sum(probability)]
+        uniCount <- database$unigram[, sum(count)]
         # take into account "end of sentence"
-        res <- uniCount + (uniCount - database$bigram[, sum(probability)])
+        res <- uniCount + (uniCount - database$bigram[, sum(count)])
     }
     
     
@@ -798,10 +798,178 @@ setIdKeys <- function(database)
     setkey(database$bigram, id1, id2)
     setkey(database$trigram, id1, id2, id3)
     setkey(database$fourgram, id1, id2, id3, id4)
+    
+    return(database)
+}
+
+setIdKeysCount <- function(database)
+{
+    setkey(database$unigram, id, count)
+    setkey(database$bigram, id1, id2, count)
+    setkey(database$trigram, id1, id2, id3, count)
+    setkey(database$fourgram, id1, id2, id3, id4, count)
+    
+    return(database)
+}
+
+
+addCondprob <- function(database)
+{
+    database$unigram[, condprob := probability / (sum(probability) + 
+                                                           database$info$endOfSentenceCount)]
+    database$unigram <- database$unigram[, .(id, word, count = probability, condprob)]
+    
+    # 2-grams ending with an end-of-sentence
+    eosCount <- database$unigram[, sum(count)] - database$bigram[, sum(probability)]
+    database$bigram[, condprob1 := probability / (sum(probability) + eosCount)]
+    database$bigram <- merge(database$bigram, database$bigramDiscount, 
+                             by.x = "probability", by.y = "r")[, .(id1, id2, count = probability, condprob = condprob1 * discount)]
+    # 3-grams ending with an end-of-sentence
+    eosCount <- database$bigram[,sum(count)] - database$trigram[, sum(probability)]
+    database$trigram[, condprob1 := probability / (sum(probability) + eosCount)]
+    database$trigram <- merge(database$trigram, database$trigramDiscount,
+                              by.x = "probability", by.y = "r")[, .(id1, id2, id3, count = probability, 
+                                                                    condprob = condprob1 * discount)]
+    # 4-grams ending with an end-of-sentence
+    eosCount <- database$trigram[,sum(count)] - database$fourgram[, sum(probability)]
+    database$fourgram[, condprob1 := probability / (sum(probability) + eosCount)]
+    database$fourgram <- merge(database$fourgram, database$fourgramDiscount,
+                               by.x = "probability", by.y = "r")[, .(id1, id2, id3, id4, count = probability,
+                                                                     condprob = condprob1 * discount)]
+    return(database)
+}
+
+buildJointTable <- function(database, n)
+{
+    res <- NA
+    
+    if (n == 1)
+    {
+        res <- merge(database$unigram[, .(id12 = id, condprob1 = condprob, count1 = count)], 
+                     database$bigram[, .(id21 = id1, id22 = id2, condprob2 = condprob, count2 = count)],
+                     by.x = "id12", by.y = "id22")[, .(id1 = id21, id2 = id12, condprob1, condprob2, count1, count2)]
+        setkey(res, id1, id2)
+    }
+    else if (n == 2)
+    {
+        res <- merge(database$bigram[, .(id12 = id1, id13 = id2, condprob1 = condprob, count1 = count)],
+                     database$trigram[, .(id21 = id1, id22 = id2, id23 = id3, condprob2 = condprob, count2 = count)],
+                     by.x = c("id12", "id13"), by.y = c("id22", "id23"))[, .(id1 = id21, id2 = id12, id3 = id13,
+                                                                             condprob1, condprob2, count1, count2)]
+        setkey(res, id1, id2, id3)
+    }
+    else if (n == 3)
+    {
+        res <- merge(database$trigram[, .(id12 = id1, id13 = id2, id14 = id3, condprob1 = condprob, count1 = count)],
+                     database$fourgram[, .(id21 = id1, id22 = id2, id23 = id3, id24 = id4, condprob2 = condprob, count2 = count)],
+                     by.x = c("id12", "id13", "id14"), 
+                     by.y = c("id22", "id23", "id24"))[, .(id1 = id21, id2 = id12, id3 = id13, id4 = id14,
+                                                           condprob1, condprob2, count1, count2)]
+        setkey(res, id1, id2, id3, id4)
+    }
+    
+    return(res)    
+}
+
+computeAlphaFromJointTable <- function(database, jointTable, ids)
+{
+    n = length(ids)
+    
+    candidatesN <- NA
+    candidatesNplus1 <- NA
+    
+    if (n == 1)
+    {
+        candidatesN <- jointTable[, .(totalCount = sum(count1), totalCondprob = sum(condprob1))]
+        candidatesNplus1 <- jointTable[id1 == ids[1], .(totalCount = sum(count2), totalCondprob = sum(condprob2))]
+    } else if (n == 2)
+    {
+        #TODO: don't duplicate n-1 gram counts!!!
+        #candidatesN <- jointTable[id2 == ids[2], .(totalCount1 = mean(count1), totalCondprob1 = mean(condprob1)),
+        #                          by = c(id2, id3)][, .(totalCount = sum(totalCount1), totalCondprob = sum(totalCondprob1))]
+        candidatesN <- jointTable[, .(id2, id3, totalCount1 = mean(count1), totalCondprob1 = mean(condprob1)),
+                                 by = c("id2", "id3")][, .(totalCount = sum(totalCount1), totalCondprob = sum(totalCondprob1))]
+        candidatesNplus1 <- jointTable[id1 == ids[1] & id2 == ids[2], 
+                                       .(totalCount = sum(count2), totalCondprob = sum(condprob2))]
+        
+    } else if (n == 3)
+    {
+        candidatesN <- jointTable[id2 == ids[2] & id3 == ids[3], 
+                                  .(totalCount = sum(count1), totalCondprob = sum(condprob1))]
+        candidatesNplus1 <- jointTable[id1 = ids[1] & id2 == ids[2] & id3 == ids[3], 
+                                       .(totalCount = sum(count2), totalCondprob = sum(condprob2))]        
+    }
+        
+    
+    eosNgramCondprob <- 
+        if (n == 1)
+            database$info$endOfSentenceCount / 
+                (database$unigram[, sum(count)] + database$info$endOfSentenceCount)
+        else
+        {
+            preNminus1count <- selectNgramCountLight(database, ids[1:(length(ids) - 1)])
+            eosNcount <- preNminus1count - candidatesN[1, totalCount]
+            discountN <- getDiscountTable(database, n)[r == eosNcount, discount]
+            if (length(discountN) == 0)
+                discountNminus1 <- 1
+            
+            eosNcount * discountN / preNminus1count
+        }
+            
+    preNgramCount <- selectNgramCountLight(database, ids)
+    eosNplus1count <- preNgramCount - candidatesNplus1[, totalCount]
+    discountNplus1 <- getDiscountTable(database, n + 1)[r == eosNplus1count, discount]
+    if (length(discountNplus1) == 0)
+        discountNplus1 <- 1
+    
+    eosNplus1gramCondprob <- eosNplus1count * discountNplus1 / preNgramCount
+    
+    #message("(1 - ", candidatesNplus1[1, totalCondprob], " - ", eosNplus1gramCondprob, ") / (1 - ", 
+    #        candidatesN[1, totalCondprob], " - ", eosNgramCondprob)
+    
+    return (1 - candidatesNplus1[1, totalCondprob] - eosNplus1gramCondprob) / 
+        (1 - candidatesN[1, totalCondprob] - eosNgramCondprob)
 }
 
 ## Compute alpha and store it as and additional column
 precomputeAlpha <- function(database, ngramPath = "../results/tables")
+{
+    #TODO: uncomment
+    database <- addCondprob(database)
+    database <- setIdKeysCount(database)
+    
+    maxOrder <- 4
+    
+    for (n in 2:maxOrder)
+    {
+        message("Processing n = ", n, "...")
+        currentTable <- getNgramTable(database, n)
+        currentTable[, alpha := 1]
+        if (n == maxOrder)
+            break;
+        
+        discountTable <- getDiscountTable(database, n)
+        jointTable <- buildJointTable(database, n)
+        
+        for (i in 1:nrow(currentTable))
+        {
+            if (i %% 10 == 0)
+                message("Processing row ", i, "...")
+            
+            ids <- getIds(currentTable, n, i)
+            
+            
+            al <- computeAlphaFromJointTable(database, jointTable, ids)
+            currentTable[i, alpha := al]
+        } # end loop by i
+        
+        tablePathname <- sprintf("%s/tabVocAlpha%d.csv", ngramPath, n)
+        write.csv(currentTable, tablePathname, row.names = FALSE)
+    }
+}
+
+
+precomputeAlpha1 <- function(database, ngramPath = "../results/tables")
 {
     setIdKeys(database)
     
