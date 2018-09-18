@@ -47,7 +47,10 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
     #counts <- merge(counts, data.table(countsToDiscount = countsToDiscount), 
     #                by.x = "count", by.y = "countsToDiscount")[, .(count, discount)]
     
-    return(counts[, .(r, discount)])
+    res <- counts[, .(r, discount)]
+    setindex(res, r)
+    
+    return(res)
 }
 
 
@@ -669,7 +672,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         # by count to get the discount
         res <- merge(database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], 
                                        .(id = id4, count = probability, 
-                                         condprob1 = probability / preNgramCount)], 
+                                         condprob1 = probability / preNgramCount), on = c("id1", "id2", "id3")], 
                      discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]
     } else if (n == 3)
@@ -677,7 +680,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         discountTable <- database$trigramDiscount
         # by count to get the discount
         res <- merge(database$trigram[id1 == ids[1] & id2 == ids[2],
-                     .(id = id3, count = probability, condprob1 = probability / preNgramCount)],
+                     .(id = id3, count = probability, condprob1 = probability / preNgramCount), on = c("id1", "id2")],
                     discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
         
@@ -686,7 +689,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         discountTable <- database$bigramDiscount
         # by count to get the discount
         res <- merge(database$bigram[id1 == ids[1], 
-                            .(id = id2, count = probability, condprob1 = probability / preNgramCount)], 
+                            .(id = id2, count = probability, condprob1 = probability / preNgramCount), on = c("id1")], 
                      discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
     }
@@ -719,8 +722,9 @@ computeEosCondProb <- function(database, n, candidates, preNgramCount)
 computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN, eosCondProbNminus1)
 {
     sumPredictedNN <- candidatesN[, sum(condprob)] + eosCondProbN
-    sumPredictedNNminus1 <- merge(candidatesN[, .(id)], candidatesNminus1[, .(id, condprob)],
-                            by.x = "id", by.y = "id")[, sum(condprob)] + eosCondProbNminus1
+    #sumPredictedNNminus1 <- merge(candidatesN[, .(id)], candidatesNminus1[, .(id, condprob)],
+    #                        by.x = "id", by.y = "id")[, sum(condprob)] + eosCondProbNminus1
+    sumPredictedNNminus1 <- candidatesNminus1[id %in% candidatesN$id, sum(condprob)] + eosCondProbNminus1
     return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
 }
 
@@ -794,16 +798,43 @@ predictWordKatz <- function(database, string)
 
 setIdKeys <- function(database)
 {
-    setkey(database$unigram, id)
-    setkey(database$bigram, id1, id2)
-    setkey(database$trigram, id1, id2, id3)
-    setkey(database$fourgram, id1, id2, id3, id4)
+    setindex(database$unigram, id);
+    setindex(database$unigram, probability);
+    
+    setindex(database$bigram, id1)
+    setindex(database$bigram, id2)
+    setindex(database$bigram, id1, id2)
+    setindex(database$bigram, probability)
+    
+    setindex(database$trigram, id1)
+    setindex(database$trigram, id2)
+    setindex(database$trigram, id3)
+    setindex(database$trigram, id1, id2, id3)
+    setindex(database$trigram, probability)
+    
+    setindex(database$fourgram, id1)
+    setindex(database$fourgram, id2)
+    setindex(database$fourgram, id3)
+    setindex(database$fourgram, id4)
+    setindex(database$fourgram, id1, id2, id3, id4)
+    setindex(database$fourgram, probability)
+    
+    #setkey(database$unigram, id)
+    #setindex(database$unigram, probability)
+    #setkey(database$bigram, id1, id2)
+    #setindex(database$bigram, probability)
+    #setkey(database$trigram, id1, id2, id3)
+    #setindex(database$trigram, probability)
+    #setkey(database$fourgram, id1, id2, id3, id4)
+    #setindex(database$fourgram, probability)
+    
+    return(database)
 }
 
 ## Compute alpha and store it as and additional column
 precomputeAlpha <- function(database, ngramPath = "../results/tables")
 {
-    setIdKeys(database)
+    database <- setIdKeys(database)
     
     maxOrder <- 4
     
@@ -818,8 +849,9 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             break;
         
         for (i in 1:nrow(currentTable))
+        #resVec <- foreach(i = 1:nrow(currentTable), .combine = c) %dopar%
         {
-            if (i %% 10 == 0)
+            if (i %% 100 == 0)
                 message("Processing row ", i, "...")
             
             ids <- getIds(currentTable, n, i)
@@ -838,6 +870,8 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
                     preNminus1count <- selectNgramCountLight(database, idsLower)
                     selectCandidatesLight(database, idsLower, preNminus1count)
                 }
+            
+            #setindex(candidatesN, id)
             
             preNgramCount <- currentTable[i, probability]
             candidatesNplus1 <- selectCandidatesLight(database, ids, preNgramCount)
@@ -870,6 +904,8 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             currentTable[i, alpha := al]
             currentTable[i, condprob := probability * discount / lowerNgramCount]
         } # end loop by i
+        
+        stopImplicitCluster()
         
         tablePathname <- sprintf("%s/tabVocAlpha%d.csv", ngramPath, n)
         write.csv(currentTable, tablePathname, row.names = FALSE)
