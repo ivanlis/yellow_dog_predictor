@@ -713,7 +713,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         # by count to get the discount
         res <- merge(database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], 
                                        .(id = id4, count = probability, 
-                                         condprob1 = probability / preNgramCount), on = c("id1", "id2", "id3")], 
+                                         condprob1 = probability / preNgramCount)], 
                      discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]
     } else if (n == 3)
@@ -721,7 +721,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         discountTable <- database$trigramDiscount
         # by count to get the discount
         res <- merge(database$trigram[id1 == ids[1] & id2 == ids[2],
-                     .(id = id3, count = probability, condprob1 = probability / preNgramCount), on = c("id1", "id2")],
+                     .(id = id3, count = probability, condprob1 = probability / preNgramCount)],
                     discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
         
@@ -730,7 +730,7 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
         discountTable <- database$bigramDiscount
         # by count to get the discount
         res <- merge(database$bigram[id1 == ids[1], 
-                            .(id = id2, count = probability, condprob1 = probability / preNgramCount), on = c("id1")], 
+                            .(id = id2, count = probability, condprob1 = probability / preNgramCount)], 
                      discountTable, 
             by.x = "count", by.y = "r")[, .(id, count, condprob = condprob1 * discount)]        
     }
@@ -741,6 +741,9 @@ selectCandidatesLight <- function(database, ids, preNgramCount = -1)
 
 computeEosCondProb <- function(database, n, candidates, preNgramCount)
 {
+    if (preNgramCount == 0)
+        return(0)
+    
     discountTable <-
         if (n == 1)
             database$unigramDiscount
@@ -996,8 +999,62 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
         currentIds <- tail(ids, ord)
         count <- selectNgramCountLight(database, currentIds)
         #TODO: special case for ord == 1
-        totalCount <- selectNgramCountLight(database, head(currentIds, ord - 1))
+        totalCount <- 
+            if (ord > 1)
+                selectNgramCountLight(database, head(currentIds, ord - 1))
+            else
+                (database$info$totalCounts[1] + database$info$eosCounts[1])
+        
+        
         discount <- getDiscountTable(database, ord)[r == count, discount]
+        
+        
+        #TODO: compute alpha, multiply it by the accumulated alpha value
+        #      if it is the highes possible order, do not do anything
+        if (ord < maxOrderHere)
+        {
+            preNminus1count <- 0
+             
+            # candidates guessed at order ord given the (ord - 1) last terms 
+            candidatesN <-
+                if (ord == 1)
+                {
+                    database$unigram[, .(id, condprob = probability / (sum(probability) + 
+                                                                            database$info$endOfSentenceCount))]
+                } else
+                {
+                    # last n - 1 ids
+                    idsLower <- tail(currentIds, ord - 1)
+                    preNminus1count <- selectNgramCountLight(database, idsLower)
+                    selectCandidatesLight(database, idsLower, preNminus1count)
+                }
+            
+             #setindex(candidatesN, id)
+             
+            preNgramCount <- selectNgramCountLight(database, currentIds)
+            # if the ord-gram does not exist, its alpha will be 1
+            if (preNgramCount == 0)
+                next
+            
+            candidatesNplus1 <- selectCandidatesLight(database, currentIds, preNgramCount)
+             
+            eosNgramCondprob <- 
+                if (ord == 1)
+                    database$info$endOfSentenceCount / 
+                        (database$info$totalCounts[1] + database$info$endOfSentenceCount)
+                else #TODO: if possible, use precomputed values for eos counts!!!
+                    computeEosCondProb(database, ord, candidatesN, preNminus1count)
+            
+            eosNplus1Condprob <- computeEosCondProb(database, ord + 1, candidatesNplus1, preNgramCount)
+             
+            al <- computeAlpha(database, candidatesNplus1, candidatesN, 
+                                eosNplus1Condprob, eosNgramCondprob)
+            
+            message("for ord = ", ord, ":  al = ", al)
+            alpha <- alpha * al
+        }
+        
+        
         if (count > 0)
             return(list(
                 condprob = alpha * count * discount / totalCount,
@@ -1006,41 +1063,6 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                 discount = discount,
                 alpha = alpha))
         
-        
-        # ids <- getIds(currentTable, n, i)
-        # 
-        # preNminus1count <- 0
-        # 
-        # candidatesN <-
-        #     if (n == 1)
-        #     {
-        #         database$unigram[, .(id, condprob = probability / (sum(probability) + 
-        #                                                                database$info$endOfSentenceCount))]
-        #     } else
-        #     {
-        #         # last n - 1 ids
-        #         idsLower <- tail(ids, n - 1)
-        #         preNminus1count <- selectNgramCountLight(database, idsLower)
-        #         selectCandidatesLight(database, idsLower, preNminus1count)
-        #     }
-        # 
-        # #setindex(candidatesN, id)
-        # 
-        # preNgramCount <- currentTable[i, probability]
-        # candidatesNplus1 <- selectCandidatesLight(database, ids, preNgramCount)
-        # 
-        # 
-        # eosNgramCondprob <- 
-        #     if (n == 1)
-        #         database$info$endOfSentenceCount / 
-        #     (database$unigram[, sum(probability)] + database$info$endOfSentenceCount)
-        # else
-        #     computeEosCondProb(database, n, candidatesN, preNminus1count)
-        # 
-        # eosNplus1Condprob <- computeEosCondProb(database, n + 1, candidatesNplus1, preNgramCount)
-        # 
-        # al <- computeAlpha(database, candidatesNplus1, candidatesN, 
-        #                    eosNplus1Condprob, eosNgramCondprob)        
     }
      
     ids
