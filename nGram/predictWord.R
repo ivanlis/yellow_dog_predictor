@@ -5,6 +5,7 @@ trigramsToSuggest = 50
 fourgramsToSuggest = 50
 
 maxOrder = 4
+unknownProb = 0.05
 
 computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
 {
@@ -57,6 +58,14 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
 assignUnknownWordProbability <- function(database, prob = 0.0)
 {
     database$info$probUnknownWord <- prob
+    
+    # modify discount for unigrams
+    beta <- prob / (1 - prob)
+    database$unigramDiscount[, discount := 1 / (1 + beta)]
+    database$unigramDiscount <- rbind(database$unigramDiscount,
+                                      data.table(r = database$info$eosCounts[1], discount = 1 / (1 + beta)))
+    setindex(database$unigramDiscount, r)
+    
     return(database)
 }
 
@@ -119,6 +128,8 @@ loadDatabase <- function(ngramPath = "../results/tables")
     
     res$info$totalCounts <- computeCounts(res)
     res$info$eosCounts <- computeEosCounts(res)
+    
+    res <- assignUnknownWordProbability(res, prob = unknownProb)
     
     return(res)
 }
@@ -908,6 +919,7 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             candidatesN <-
                 if (n == 1)
                 {
+                    #TODO: discount!!!
                     database$unigram[, .(id, condprob = probability / (sum(probability) + 
                                                                            database$info$endOfSentenceCount))]
                 } else
@@ -1036,6 +1048,7 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
             candidatesN <-
                 if (ord == 1)
                 {
+                    #TODO: discount!!!
                     database$unigram[, .(id, condprob = probability / (sum(probability) + 
                                                                             database$info$endOfSentenceCount))]
                 } else
