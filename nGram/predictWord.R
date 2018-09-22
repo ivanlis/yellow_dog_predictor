@@ -4,6 +4,7 @@ bigramsToSuggest = 10
 trigramsToSuggest = 50
 fourgramsToSuggest = 50
 
+maxOrder = 4
 
 computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
 {
@@ -53,6 +54,34 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
     return(res)
 }
 
+assignUnknownWordProbability <- function(database, prob = 0.0)
+{
+    database$info$probUnknownWord <- prob
+    return(database)
+}
+
+computeCounts <- function(database)
+{
+    res <- vector("integer", database$info$maxOrder)
+    res[1] <- database$unigram[, sum(probability)]
+    res[2] <- database$bigram[, sum(probability)]
+    res[3] <- database$trigram[, sum(probability)]
+    res[4] <- database$fourgram[, sum(probability)]
+    
+    return(res)
+}
+
+computeEosCounts <- function(database)
+{
+    if (database$info$maxOrder < 2)
+        return(0)
+    res <- vector("integer", database$info$maxOrder)
+    for (i in 2:database$info$maxOrder)
+        res[i] <- database$info$totalCounts[i - 1] - database$info$totalCounts[i]
+    res[1] <- res[2]
+    
+    return(res)
+}
 
 loadDatabase <- function(ngramPath = "../results/tables")
 {
@@ -76,7 +105,7 @@ loadDatabase <- function(ngramPath = "../results/tables")
     
     
     
-    list(unigram = tableWord, bigram = tableBigram, 
+    res <- list(unigram = tableWord, bigram = tableBigram, 
          trigram = tableTrigram, fourgram = tableFourgram,
          
          unigramDiscount = computeDiscountFunc(1, tableWord, 1:5),
@@ -84,8 +113,14 @@ loadDatabase <- function(ngramPath = "../results/tables")
          trigramDiscount = computeDiscountFunc(3, tableTrigram, 1:5),
          fourgramDiscount = computeDiscountFunc(4, tableFourgram, 1:5),
          
-         info = list(endOfSentenceCount = endOfSentenceCount))
+         info = list(maxOrder = maxOrder, 
+                     endOfSentenceCount = endOfSentenceCount,
+                     probUnknownWord = 0.0))
     
+    res$info$totalCounts <- computeCounts(res)
+    res$info$eosCounts <- computeEosCounts(res)
+    
+    return(res)
 }
 
 
@@ -499,6 +534,8 @@ selectNgramCount <- function(database, terms)
     # n-gram order
     n <- length(terms)
     
+    #TODO: n == 4
+    
     if (n == 3)
     {
         res <- merge(merge(
@@ -540,7 +577,11 @@ selectNgramCountLight <- function(database, ids)
     # n-gram order
     n <- length(ids)
     
-    if (n == 3)
+    if (n == 4)
+    {
+        res <- database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3] & id4 == ids[4], 
+                                 probability]
+    } else if (n == 3)
     {
         res <- database$trigram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3], probability]
     } else if (n == 2)
@@ -733,7 +774,7 @@ predictWordKatz <- function(database, string)
 {
     words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 3)
     
-    maxOrder <- 4
+    #maxOrder <- 4
     
     results <- vector(mode = "list", length = maxOrder)
     
@@ -836,7 +877,7 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
 {
     database <- setIdKeys(database)
     
-    maxOrder <- 4
+    #maxOrder <- 4
     
     for (n in 1:maxOrder)
     {
@@ -849,7 +890,6 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             break;
         
         for (i in 1:nrow(currentTable))
-        #resVec <- foreach(i = 1:nrow(currentTable), .combine = c) %dopar%
         {
             if (i %% 100 == 0)
                 message("Processing row ", i, "...")
@@ -905,10 +945,98 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             currentTable[i, condprob := probability * discount / lowerNgramCount]
         } # end loop by i
         
-        #stopImplicitCluster()
-        
         tablePathname <- sprintf("%s/tabVocAlpha%d.csv", ngramPath, n)
         write.csv(currentTable, tablePathname, row.names = FALSE)
     }
 }
 
+# maxPossibleOrder: to limit the search. For example, if in the 4 previous words only
+# the bigram formed by the last two words existed (neither the 3- nor 4-gram),
+# this time the maximum order is 3
+computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
+{
+    results <- vector(mode = "list", length = maxOrder)
+    
+    maxOrderByNumWords <- length(words)
+    maxOrderHere = min(c(maxPossibleOrder, maxOrder, maxOrderByNumWords))
+    
+    if (maxOrderHere == 0)
+        return(0.0)
+    
+    # the words we are interested in
+    words <- tail(words, maxOrderHere)
+    # find their ids
+    ids = vector("integer", maxOrderHere)
+    lastNotFound <- 0
+    for (i in maxOrderHere:1)
+    {
+        id <- database$unigram[word == words[i], id]
+        if (length(id) == 0)
+        {
+            ids[i] <- NA
+            lastNotFound <- i
+        }
+        else
+            ids[i] <- id
+    }
+
+    if (lastNotFound > 0)
+    {
+        maxOrderHere <- maxOrderHere - lastNotFound
+        ids <- tail(ids, maxOrderHere)
+    }
+       
+    alpha = 1.0
+    
+    message("maxOrderHere = ", maxOrderHere)
+    
+    for (ord in maxOrderHere:1)
+    {
+        message("Processing ord = ", ord, "...")
+        currentIds <- tail(ids, ord)
+        count <- selectNgramCountLight(database, currentIds)
+        if (count > 0)
+            return(list(
+                condprob = count / (database$info$totalCounts[ord] + database$info$totalCounts[ord]),
+                order = ord,
+                alpha = alpha))
+        
+        
+        # ids <- getIds(currentTable, n, i)
+        # 
+        # preNminus1count <- 0
+        # 
+        # candidatesN <-
+        #     if (n == 1)
+        #     {
+        #         database$unigram[, .(id, condprob = probability / (sum(probability) + 
+        #                                                                database$info$endOfSentenceCount))]
+        #     } else
+        #     {
+        #         # last n - 1 ids
+        #         idsLower <- tail(ids, n - 1)
+        #         preNminus1count <- selectNgramCountLight(database, idsLower)
+        #         selectCandidatesLight(database, idsLower, preNminus1count)
+        #     }
+        # 
+        # #setindex(candidatesN, id)
+        # 
+        # preNgramCount <- currentTable[i, probability]
+        # candidatesNplus1 <- selectCandidatesLight(database, ids, preNgramCount)
+        # 
+        # 
+        # eosNgramCondprob <- 
+        #     if (n == 1)
+        #         database$info$endOfSentenceCount / 
+        #     (database$unigram[, sum(probability)] + database$info$endOfSentenceCount)
+        # else
+        #     computeEosCondProb(database, n, candidatesN, preNminus1count)
+        # 
+        # eosNplus1Condprob <- computeEosCondProb(database, n + 1, candidatesNplus1, preNgramCount)
+        # 
+        # al <- computeAlpha(database, candidatesNplus1, candidatesN, 
+        #                    eosNplus1Condprob, eosNgramCondprob)        
+    }
+     
+    ids
+}
