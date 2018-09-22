@@ -824,7 +824,7 @@ predictWordKatz <- function(database, string)
         {
             reformatted <- results[[n]]$candidates[, 
                                                    .(id, word, count, 
-                                                     katz = condprob * results[[n - 1]]$alpha, 
+                                                     katz = condprob * results[[n]]$alpha, 
                                                      origin = n)]
             
             if (is.data.table(generalResult))
@@ -1024,19 +1024,21 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                 } else
                 {
                     # last n - 1 ids
-                    idsLower <- tail(currentIds, ord - 1)
+                    #idsLower <- tail(currentIds, ord - 1)
+                    idsLower <- ids[(length(ids) - ord + 1):(length(ids) - 1)]
                     preNminus1count <- selectNgramCountLight(database, idsLower)
                     selectCandidatesLight(database, idsLower, preNminus1count)
                 }
             
              #setindex(candidatesN, id)
              
-            preNgramCount <- selectNgramCountLight(database, currentIds)
+            idsLowerN <- ids[(length(ids) - ord):(length(ids) - 1)]
+            preNgramCount <- selectNgramCountLight(database, idsLowerN)
             # if the ord-gram does not exist, its alpha will be 1
             if (preNgramCount == 0)
                 next
             
-            candidatesNplus1 <- selectCandidatesLight(database, currentIds, preNgramCount)
+            candidatesNplus1 <- selectCandidatesLight(database, idsLowerN, preNgramCount)
              
             eosNgramCondprob <- 
                 if (ord == 1)
