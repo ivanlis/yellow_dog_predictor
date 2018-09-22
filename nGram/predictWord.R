@@ -995,10 +995,15 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
         message("Processing ord = ", ord, "...")
         currentIds <- tail(ids, ord)
         count <- selectNgramCountLight(database, currentIds)
+        #TODO: special case for ord == 1
+        totalCount <- selectNgramCountLight(database, head(currentIds, ord - 1))
+        discount <- getDiscountTable(database, ord)[r == count, discount]
         if (count > 0)
             return(list(
-                condprob = count / (database$info$totalCounts[ord] + database$info$totalCounts[ord]),
+                condprob = alpha * count * discount / totalCount,
                 order = ord,
+                count = count, 
+                discount = discount,
                 alpha = alpha))
         
         
