@@ -845,6 +845,7 @@ predictWordKatz <- function(database, string)
 
 setIdKeys <- function(database)
 {
+    setindex(database$unigram, word);
     setindex(database$unigram, id);
     setindex(database$unigram, probability);
     
@@ -980,7 +981,8 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
         if (length(id) == 0)
         {
             ids[i] <- NA
-            lastNotFound <- i
+            if (i != maxOrderHere)
+                lastNotFound <- i
         }
         else
             ids[i] <- id
