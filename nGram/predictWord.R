@@ -977,7 +977,9 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
     lastNotFound <- 0
     for (i in maxOrderHere:1)
     {
-        id <- database$unigram[word == words[i], id]
+        id <- -1
+        if (i < maxOrderHere || words[i] != ";;;EOS;;;")
+            id <- database$unigram[word == words[i], id]
         if (length(id) == 0)
         {
             ids[i] <- NA
@@ -995,6 +997,8 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
     }
        
     alpha = 1.0
+    eosNplus1Condprob <- 0
+    
     
     message("maxOrderHere = ", maxOrderHere)
     
@@ -1002,8 +1006,12 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
     {
         message("Processing ord = ", ord, "...")
         currentIds <- tail(ids, ord)
-        count <- selectNgramCountLight(database, currentIds)
-        #TODO: special case for ord == 1
+        count <-
+            if (!is.na(ids[length(ids)]) && ids[length(ids)] >= 0)
+                selectNgramCountLight(database, currentIds)
+            else
+                -1
+        
         totalCount <- 
             if (ord > 1)
                 selectNgramCountLight(database, head(currentIds, ord - 1))
@@ -1011,7 +1019,11 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                 (database$info$totalCounts[1] + database$info$eosCounts[1])
         
         
-        discount <- getDiscountTable(database, ord)[r == count, discount]
+        discount <-
+            if (count > 0)
+                getDiscountTable(database, ord)[r == count, discount]
+            else
+                1.0
         
         
         #TODO: compute alpha, multiply it by the accumulated alpha value
@@ -1066,8 +1078,28 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                 count = count, 
                 discount = discount,
                 alpha = alpha))
-        
+        else if (count < 0)
+        {
+            if (is.na(ids[length(ids)]))
+            {
+                if (ord == 1) # unknown word
+                    return(list(
+                        condprob = database$info$probUnknownWord,
+                        order = ord,
+                        count = count, 
+                        discount = discount,
+                        alpha = alpha))
+            } else if (ids[length(ids)] < 0) # end of sentence
+            {
+                #TODO: this case when max. ord is 1
+                if (eosNplus1Condprob > 0)
+                    return(list(
+                        condprob = eosNplus1Condprob,
+                        order = ord + 1,
+                        count = count, 
+                        discount = discount,
+                        alpha = alpha))                
+            }
+        }
     }
-     
-    ids
 }
