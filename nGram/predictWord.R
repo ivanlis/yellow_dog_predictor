@@ -793,13 +793,15 @@ predictWordKatz <- function(database, string)
     results <- vector(mode = "list", length = maxOrder)
     
     eosUnigrams <- database$info$endOfSentenceCount
+    #TODO: discount
     results[[1]] <- 
         list(candidates = database$unigram[, .(id, condprob = probability / (sum(probability) + 
                                                                                  eosUnigrams))],
              eosNgramCondprob = eosUnigrams / (database$unigram[, sum(probability)] + eosUnigrams),
              alpha = 1)
     
-    database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))]
+    #TODO: unnecessary?
+    #database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))]
     
     
     for (n in 2:min(maxOrder, length(words) + 1))
@@ -938,6 +940,7 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             
             eosNgramCondprob <- 
                 if (n == 1)
+                    #TODO: discount!!!
                     database$info$endOfSentenceCount / 
                         (database$unigram[, sum(probability)] + database$info$endOfSentenceCount)
                 else
