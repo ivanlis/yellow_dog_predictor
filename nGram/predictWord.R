@@ -66,6 +66,8 @@ assignUnknownWordProbability <- function(database, prob = 0.0)
                                       data.table(r = database$info$eosCounts[1], discount = 1 / (1 + beta)))
     setindex(database$unigramDiscount, r)
     
+    database$info$unigramDiscountValue <- 1 / (1 + beta)
+    
     return(database)
 }
 
@@ -407,9 +409,11 @@ predictWordKatz1 <- function(database, string)
                 eosDiscount <- 1
             eosBigramCondprob <- eosBigrams * eosDiscount / preUnigramCount
             sumPredicted22 <- bigramCandidates[, sum(condprob)] + eosBigramCondprob
-            #TODO: discount for unigrams
+
             sumPredicted21 <- (merge(bigramCandidates[, .(id)], 
-                                     database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))],
+                                     database$unigram[, .(id, 
+                                                          condprob = database$info$unigramDiscountValue * 
+                                                              probability / (sum(probability) + eosUnigrams))],
                                      by.x = "id", by.y = "id"))[, sum(condprob)]
             alpha1 <- (1 - sumPredicted22) / (1 - sumPredicted21)
             
@@ -779,7 +783,9 @@ computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN,
     sumPredictedNN <- candidatesN[, sum(condprob)] + eosCondProbN
     #sumPredictedNNminus1 <- merge(candidatesN[, .(id)], candidatesNminus1[, .(id, condprob)],
     #                        by.x = "id", by.y = "id")[, sum(condprob)] + eosCondProbNminus1
-    sumPredictedNNminus1 <- candidatesNminus1[id %in% candidatesN$id, sum(condprob)] + eosCondProbNminus1
+    sumPredictedNNminus1 <- eosCondProbNminus1
+    if (nrow(candidatesN) > 0)
+        sumPredictedNNminus1 <- sumPredictedNNminus1 + candidatesNminus1[id %in% candidatesN$id, sum(condprob)] 
     return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
 }
 
@@ -793,11 +799,11 @@ predictWordKatz <- function(database, string)
     results <- vector(mode = "list", length = maxOrder)
     
     eosUnigrams <- database$info$endOfSentenceCount
-    #TODO: discount
     results[[1]] <- 
-        list(candidates = database$unigram[, .(id, condprob = probability / (sum(probability) + 
-                                                                                 eosUnigrams))],
-             eosNgramCondprob = eosUnigrams / (database$unigram[, sum(probability)] + eosUnigrams),
+        list(candidates = database$unigram[, .(id, condprob = database$info$unigramDiscountValue * 
+                                                   probability / (sum(probability) + eosUnigrams))],
+             eosNgramCondprob = database$info$unigramDiscountValue * 
+                 eosUnigrams / (database$unigram[, sum(probability)] + eosUnigrams),
              alpha = 1)
     
     #TODO: unnecessary?
@@ -921,9 +927,8 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             candidatesN <-
                 if (n == 1)
                 {
-                    #TODO: discount!!!
-                    database$unigram[, .(id, condprob = probability / (sum(probability) + 
-                                                                           database$info$endOfSentenceCount))]
+                    database$unigram[, .(id, condprob = database$info$unigramDiscountValue * 
+                                             probability / (sum(probability) + database$info$endOfSentenceCount))]
                 } else
                 {
                     # last n - 1 ids
@@ -940,8 +945,7 @@ precomputeAlpha <- function(database, ngramPath = "../results/tables")
             
             eosNgramCondprob <- 
                 if (n == 1)
-                    #TODO: discount!!!
-                    database$info$endOfSentenceCount / 
+                    database$info$unigramDiscountValue * database$info$endOfSentenceCount / 
                         (database$unigram[, sum(probability)] + database$info$endOfSentenceCount)
                 else
                     computeEosCondProb(database, n, candidatesN, preNminus1count)
@@ -1041,7 +1045,7 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                 1.0
         
         
-        #TODO: compute alpha, multiply it by the accumulated alpha value
+        # compute alpha, multiply it by the accumulated alpha value
         #      if it is the highes possible order, do not do anything
         if (ord < maxOrderHere)
         {
@@ -1051,9 +1055,8 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
             candidatesN <-
                 if (ord == 1)
                 {
-                    #TODO: discount!!!
-                    database$unigram[, .(id, condprob = probability / (sum(probability) + 
-                                                                            database$info$endOfSentenceCount))]
+                    database$unigram[, .(id, condprob = database$info$unigramDiscountValue * 
+                                             probability / (sum(probability) + database$info$endOfSentenceCount))]
                 } else
                 {
                     # last n - 1 ids
