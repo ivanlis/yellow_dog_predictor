@@ -8,19 +8,20 @@ defaultBadWordsFileName <- "../misc/bad-words-edited.txt"
 
 library(quanteda)
 library(readtext)
+library(stopwords)
 
 
 buildMatrix <- function(toks, cnt = 0, ngramType = 1, matrixDirectory = ".")
 {
-    cat("Computing DFM for id=", cnt, "...\n")
+    message("Computing DFM for id=", cnt, "...")
     dfMatr <- dfm(toks)
-    cat("DFM for id=", cnt, "computed.\n")
+    message("DFM for id=", cnt, "computed.")
     matrFileName <- sprintf("%s/dfm%d_%02d.dat", matrixDirectory, ngramType, cnt)
     matrFile <- file(matrFileName, "w")
-    cat("Storing DFM for id=", cnt, "in", matrFileName, "...\n")
+    message("Storing DFM for id=", cnt, "in", matrFileName, "...")
     serialize(dfMatr, matrFile)
     close(matrFile)
-    cat("DFM for id=", cnt, "stored.\n")
+    message("DFM for id=", cnt, "stored.")
     
     dfMatr
 }
@@ -30,14 +31,15 @@ buildTokens <- function(tokSource,
             cnt = 0, 
             tokensDirectory = defaultTokensDirectory, 
             ngramType = 1, 
-            rawTok = FALSE)
+            rawTok = FALSE,
+            removeStop = FALSE)
 {
     toks <- NA
     tokFileName <- ""
     
     if (rawTok)
     {
-        cat("Computing raw tokens for cnt", cnt, "ngramType =", ngramType, "...\n")
+        message("Computing raw tokens for cnt", cnt, "ngramType =", ngramType, "...")
         toks <- tokens_tolower(tokens(tokSource, what = "word", 
                                       remove_numbers = FALSE, 
                                       remove_punct = TRUE,
@@ -46,9 +48,15 @@ buildTokens <- function(tokSource,
                                       include_docvars = FALSE,
                                       ngrams = 1
         ))
-        cat("Raw tokens for cnt", cnt, "ngramType =", ngramType, "built.\n")
+        message("Raw tokens for cnt", cnt, "ngramType =", ngramType, "built.")
         
-        cat("Removing profane words...\n")
+        if (removeStop)
+        {
+            message("Removing stop words...")
+            toks <- tokens_remove(toks, stopwords::stopwords("en", "snowball"), verbose = 3)
+        }
+        
+        message("Removing profane words...")
         toks <- tokens_replace(toks, badWords, 
                                replacement = rep(";;;censored;;;", length(badWords)), 
                                verbose=3)
@@ -57,7 +65,7 @@ buildTokens <- function(tokSource,
     }
     else
     {
-        cat("Computing filtered tokens for cnt", cnt, "ngramType =", ngramType, "...\n")
+        message("Computing filtered tokens for cnt", cnt, "ngramType =", ngramType, "...")
         toks <- tokens(tokSource, what = "word", 
                        remove_numbers = FALSE, 
                        remove_punct = FALSE,
@@ -67,10 +75,10 @@ buildTokens <- function(tokSource,
                        ngrams = ngramType
         )
         
-        cat("Removing profane words...\n")
+        message("Removing profane words...")
         toks <- tokens_remove(toks, ";;;censored;;;", valuetype = "regex", verbose=3)        
         
-        cat("Removing number and symbol containing words from tokens...\n")
+        message("Removing number and symbol containing words from tokens...")
         #toks <- tokens_remove(toks, "[0-9]", valuetype = "regex", verbose=3)
         regex <- "[^a-z-'_]"
         if (ngramType == 1)
@@ -80,11 +88,11 @@ buildTokens <- function(tokSource,
         tokFileName <- sprintf("%s/tokens%d_%02d.dat", tokensDirectory, ngramType, cnt)
     }
     
-    cat("Saving tokens to file ", tokFileName, "\n")
+    message("Saving tokens to file ", tokFileName)
     tokFile <- file(tokFileName, "w")
     serialize(toks, tokFile)
     close(tokFile)
-    cat("Tokens for cnt =", cnt, "saved.\n")
+    message("Tokens for cnt =", cnt, "saved.")
     
     toks
 }
@@ -98,7 +106,7 @@ filterMatrix <- function(matr, cnt = 0, keepTokens = 0.9, matrixDirectory = ".",
     lastIndex <- sum(cumsum(counts) < threshold) + 1
     
     
-    cat("Filtering matrix,", keepTokens, "<->", threshold, "last index =", lastIndex, "\n")
+    message("Filtering matrix,", keepTokens, "<->", threshold, "last index =", lastIndex)
     matr <- matr[, 1:lastIndex]
     
     fmatrCon <- file(sprintf("%s/filtered_dfm%d_%02d.dat", matrixDirectory, ngramType, cnt), "w")
@@ -114,6 +122,7 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                         buildMatrices = TRUE,
                         mergeMatrices = FALSE,
                         mergeFiltered = FALSE,
+                        removeStop = FALSE,
                         filterSteps = c(3, 8, 14),
                         ngramTypes = 1:4)
 {
@@ -139,22 +148,22 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
         
         for (f in files)
         {
-            cat("Creating corpus", cnt, "from", f, "...\n")
+            message("Creating corpus", cnt, "from", f, "...")
             partCorpus <- corpus(readtext(f, cache = FALSE, verbosity = 3))
-            cat("Corpus", cnt, "created.\n")    
-            cat("Reshaping corpus", cnt, "...\n")
+            message("Corpus", cnt, "created.")    
+            message("Reshaping corpus", cnt, "...")
             partCorpus <- corpus_reshape(partCorpus, to = "sentences", use_docvars = FALSE)
-            cat("Corpus", cnt, "reshaped.\n")
+            message("Corpus", cnt, "reshaped.")
             
             # Now, tokenize this corpus
-            cat("Tokenizing corpus", cnt, "...\n")
-            cat("Building raw tokens...\n")
+            message("Tokenizing corpus", cnt, "...")
+            message("Building raw tokens...")
             rawToks <- buildTokens(partCorpus, badWords, cnt, tokensDirectory, 
-                                   ngramType = 1, rawTok = TRUE)
-            cat("Raw tokens built.\n")
+                                   ngramType = 1, rawTok = TRUE, removeStop = removeStop)
+            message("Raw tokens built.")
             for (ngramType in ngramTypes)
             {
-                cat("Building filtered tokens for ngramType =", ngramType, "\n")
+                message("Building filtered tokens for ngramType =", ngramType)
                 toks <- buildTokens(rawToks, badWords, cnt, tokensDirectory,
                                     ngramType = ngramType, rawTok = FALSE)
                 # build DFMs if needed
@@ -166,14 +175,14 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                 rm(toks)
             }
             
-            cat("Corpus", cnt, "tokenized.\n")
+            message("Corpus", cnt, "tokenized.")
             cnt <- cnt + 1
         }
     }
     
     if (buildMatrices && !buildTokens)
     {
-        cat("Building DFMs from saved tokens, directory", tokensDirectory, "...\n")
+        message("Building DFMs from saved tokens, directory", tokensDirectory, "...")
         
         for (ngramType in ngramTypes)
         {
@@ -182,16 +191,16 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                                 full.names = TRUE,
                                 recursive = FALSE)
             
-            cat("Processing", length(files), "token files...\n")
+            message("Processing", length(files), "token files...")
             
             cnt <- 0
             for (f in files)
             {
                 tokFile <- file(f, "r")
-                cat("Reading tokens for id=", cnt, "from", f, "...\n")
+                message("Reading tokens for id=", cnt, "from", f, "...")
                 toks <- unserialize(tokFile)
                 close(tokFile)
-                cat("Tokens for id=", cnt, "read.\n")
+                message("Tokens for id=", cnt, "read.")
                 
                 # store matrix only, do not accumulate them
                 buildMatrix(toks, cnt, ngramType, matrixDirectory)
@@ -205,7 +214,7 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
     
     if (mergeMatrices)
     {
-        cat("Building overall DFM from saved DFMs, directory", matrixDirectory, "...\n")
+        message("Building overall DFM from saved DFMs, directory", matrixDirectory, "...")
         for (ngramType in ngramTypes)
         #for (ngramType in 3:3)
         {
@@ -221,14 +230,14 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
             for (f in files)
             {
                 matrFile <- file(f, "r")
-                cat("Reading DFM for id=", cnt, "from", f, "...\n")
+                message("Reading DFM for id=", cnt, "from", f, "...")
                 newMatrix <- unserialize(matrFile)
                 close(matrFile)
-                cat("DFM for id=", cnt, "read.\n")
+                message("DFM for id=", cnt, "read.")
                 
-                cat("Grouping all rows...\n")
+                message("Grouping all rows...")
                 newMatrix <- dfm_group(newMatrix, groups = rep(1, nrow(newMatrix)))
-                cat("All rows grouped.\n")
+                message("All rows grouped.")
                 
                 if (is.dfm(resultMatrix))
                 {
@@ -240,8 +249,8 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                 
                 rm(newMatrix)
                 
-                cat("Iteration ", cnt, ", ngramType =", ngramType, 
-                    ":  dim(resultMatrix) =", dim(resultMatrix), "\n")
+                message("Iteration ", cnt, ", ngramType =", ngramType, 
+                    ":  dim(resultMatrix) =", dim(resultMatrix))
                 
                 
                 if (ngramType >= 3 && cnt %in% c(filterSteps, length(files) - 1))
@@ -261,10 +270,10 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                 genMatrFileName <- sprintf("%s/generalDfm%d.dat", 
                                            matrixDirectory, ngramType)
                 genMatrFile <- file(genMatrFileName, "w")
-                cat("Saving general DFM for ngramType = ", ngramType, "...\n")
+                message("Saving general DFM for ngramType = ", ngramType, "...")
                 serialize(resultMatrix, genMatrFile)
                 close(genMatrFile)
-                cat("General DFM for ngramType = ", ngramType, "saved.\n")
+                message("General DFM for ngramType = ", ngramType, "saved.")
                 rm(resultMatrix)
             }
         }
@@ -286,14 +295,14 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
             for (f in files)
             {
                 matrFile <- file(f, "r")
-                cat("Reading DFM for id=", cnt, "from", f, "...\n")
+                message("Reading DFM for id=", cnt, "from", f, "...")
                 newMatrix <- unserialize(matrFile)
                 close(matrFile)
-                cat("DFM for id=", cnt, "read.\n")
+                message("DFM for id=", cnt, "read.")
                 
-                cat("Grouping all rows...\n")
+                message("Grouping all rows...")
                 newMatrix <- dfm_group(newMatrix, groups = rep(1, nrow(newMatrix)))
-                cat("All rows grouped.\n")
+                message("All rows grouped.")
                 
                 if (is.dfm(resultMatrix))
                 {
@@ -305,8 +314,8 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                 
                 rm(newMatrix)
                 
-                cat("Iteration ", cnt, ", ngramType =", ngramType, 
-                    ":  dim(resultMatrix) =", dim(resultMatrix), "\n")
+                message("Iteration ", cnt, ", ngramType =", ngramType, 
+                    ":  dim(resultMatrix) =", dim(resultMatrix))
                 cnt <- cnt + 1
             }
             
@@ -316,10 +325,10 @@ extractFeatures <- function(textDirectory = defaultTextDirectory,
                 genMatrFileName <- sprintf("%s/generalDfm%d.dat", 
                                            matrixDirectory, ngramType)
                 genMatrFile <- file(genMatrFileName, "w")
-                cat("Saving general DFM for ngramType = ", ngramType, "...\n")
+                message("Saving general DFM for ngramType = ", ngramType, "...")
                 serialize(resultMatrix, genMatrFile)
                 close(genMatrFile)
-                cat("General DFM for ngramType = ", ngramType, "saved.\n")
+                message("General DFM for ngramType = ", ngramType, "saved.")
                 rm(resultMatrix)
             }        
         }
