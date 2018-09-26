@@ -1,8 +1,8 @@
 # defaults
 defaultDatasetsDirectory <- "../materials/datasets"
 defaultTextDirectory <- "../materials/datasets/english_split"
-defaultTokensDirectory <- "./results"
-defaultMatrixDirectory <- "./results"
+defaultTokensDirectory <- "../results"
+defaultMatrixDirectory <- "../results"
 
 defaultBadWordsFileName <- "../misc/bad-words-edited.txt"
 

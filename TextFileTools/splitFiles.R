@@ -26,11 +26,11 @@ splitFiles <- function(sourcePath = "../materials/datasets/final/en_US",
             if (length(lines) > 0)
             {
                 if (unifyApostrophe)
-                    sapply(lines, function(s) { gsub("\U0092", "'", gsub("’", "'", s,  fixed = TRUE), fixed = TRUE) },
+                    lines <- sapply(lines, function(s) { gsub("\U0092", "'", gsub("’", "'", s,  fixed = TRUE), fixed = TRUE) },
                            USE.NAMES = FALSE)
                 
                 if (hyphenToSpace)
-                    sapply(lines, function(s) { gsub("-", " ", s, fixed = TRUE) }, USE.NAMES = FALSE)
+                    lines <- sapply(lines, function(s) { gsub("-", " ", s, fixed = TRUE) }, USE.NAMES = FALSE)
                 
                 outputPathname <- sprintf("%s/%d_%d.txt", outputDir, cnt, splitCnt)
                 message("Writing ", length(lines), " to ", outputPathname)
