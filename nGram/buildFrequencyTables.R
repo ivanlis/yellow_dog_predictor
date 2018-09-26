@@ -46,7 +46,15 @@ freqVectorToTable <- function(freqs, n)
         #setkey(res, term1, term2, term3, term4)
         return(res)
     }
-
+    term5 <- sapply(names(freqs), function(el) { parseTerm(el, n, 5) }, USE.NAMES = FALSE)
+    if (n == 5)
+    {
+        res <- data.table(term1 = term1, term2 = term2, term3 = term3, term4 = term4, term5 = term5, probability = freqs)
+        #setkey(res, term1, term2, term3, term4)
+        return(res)
+    }
+    
+    
     return(res)
 }
 
@@ -82,12 +90,22 @@ mergeWithVocab <- function(freqs1, currFreqs, n)
         freqs <- freqs[, -c("term4")]        
     }
     
+    if (n >= 5)
+    {
+        setkey(freqs, term5)
+        freqs <- merge(freqs, freqs1[, .(id, word)], by.x = "term5", by.y = "word")
+        setnames(freqs, old = c("id"), new = c("id5"))
+        freqs <- freqs[, -c("term5")]        
+    }
+    
     if (n == 2)
         setkey(freqs, id1, id2)
     else if (n == 3)
         setkey(freqs, id1, id2, id3)
     else if (n == 4)
         setkey(freqs, id1, id2, id3, id4)
+    else if (n == 5)
+        setkey(freqs, id1, id2, id3, id4, id5)    
     
     return(freqs)
 }
@@ -101,8 +119,10 @@ groupBoundTable <- function(vocTable, ngramType)
         return(vocTable[, .(probability = sum(probability)), by = .(id1, id2)])
     else if (ngramType == 3)
         return(vocTable[, .(probability = sum(probability)), by = .(id1, id2, id3)])
-    else #if (ngramType == 4)
+    else if (ngramType == 4)
         return(vocTable[, .(probability = sum(probability)), by = .(id1, id2, id3, id4)])
+    else if (ngramType == 5)
+        return(vocTable[, .(probability = sum(probability)), by = .(id1, id2, id3, id4, id5)])
 }
 
 buildFrequencyTables <- function(matrixDirectory = "../results/dfm",
