@@ -1,5 +1,7 @@
 splitFiles <- function(sourcePath = "../materials/datasets/final/en_US",
-                       outputDir = "../materials/datasets/english_split", maxLines = 250000)
+                       outputDir = "../materials/datasets/english_split", maxLines = 250000,
+                       unifyApostrophe = TRUE,
+                       hyphenToSpace = TRUE)
 {
     files <- list.files(path = sourcePath, 
                         pattern = "*.txt", 
@@ -23,6 +25,13 @@ splitFiles <- function(sourcePath = "../materials/datasets/final/en_US",
         
             if (length(lines) > 0)
             {
+                if (unifyApostrophe)
+                    sapply(lines, function(s) { gsub("\U0092", "'", gsub("’", "'", s,  fixed = TRUE), fixed = TRUE) },
+                           USE.NAMES = FALSE)
+                
+                if (hyphenToSpace)
+                    sapply(lines, function(s) { gsub("-", " ", s, fixed = TRUE) }, USE.NAMES = FALSE)
+                
                 outputPathname <- sprintf("%s/%d_%d.txt", outputDir, cnt, splitCnt)
                 message("Writing ", length(lines), " to ", outputPathname)
                 writeLines(lines, outputPathname)
