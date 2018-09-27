@@ -242,14 +242,23 @@ gatherVocabTables <- function(tablesDirectory = "../results/tables",
     }
 }
 
-filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 2:4, threshold = 1)
+filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 2:4, threshold = 1,
+                              countsToDiscount = 1:5)
 {
+    source("predictWord.R")
+    
     for (ngramType in ngramsToFilter)
     {
         pathName <- sprintf("%s/table%dgramVoc.csv", tableDirectory, ngramType)
+        discountPathname <- sprintf("%s/discount%d.csv", tableDirectory, ngramType)
         message("Reading table from ", pathName, "...")
         currentTable <- fread(pathName)
         message("Read. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
+        
+        discountTable <- computeDiscountFunc(ngramType, currentTable, countsToDiscount)
+        write.csv(discountTable, discountPathname, row.names = FALSE)
+        message("Discount table computed and stored.")
+        
         currentTable <- currentTable[probability > threshold]
         message("After filtering. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
         

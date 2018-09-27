@@ -7,12 +7,15 @@ fourgramsToSuggest = 50
 maxOrder = 5
 unknownProb = 0.015
 
-computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
+computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount, 
+                                ngramPath = "", update = FALSE)
 {
-    ##DEBUG!!!!!
-    #return(function(r) { return(data.table(r = r, discount = rep(1.0, length(r)))) })
-    
-    
+    if (!update)
+    {
+        discountPathname <- sprintf("%s/discount%d.csv", ngramPath, ngramType)
+        if (file.exists(discountPathname))
+            return(fread(discountPathname))
+    }
     
     counts <- (tableNgram[,.(featWithCount = .N), by = .(probability)])[order(probability), 
                                                                         .(r = probability, featWithCount, discount = 1)]
