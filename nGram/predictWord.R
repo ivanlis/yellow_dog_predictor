@@ -412,7 +412,7 @@ selectNgramCountLight <- function(database, ids)
     
     if (n == 5)
     {
-        res <- database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3] & id4 == ids[4] & id5 == ids[5], 
+        res <- database$fivegram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3] & id4 == ids[4] & id5 == ids[5], 
                                  probability]        
     } else if (n == 4)
     {
@@ -963,7 +963,8 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
                                 eosNplus1Condprob, eosNgramCondprob)
             
             message("for ord = ", ord, ":  al = ", al)
-            alpha <- alpha * al
+            if (al > 0)
+                alpha <- alpha * al
         }
         
         
