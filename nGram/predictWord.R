@@ -14,7 +14,11 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount,
     {
         discountPathname <- sprintf("%s/discount%d.csv", ngramPath, ngramType)
         if (file.exists(discountPathname))
-            return(fread(discountPathname))
+        {
+            discount <- fread(discountPathname)
+            setindex(discount, r)
+            return(discount)
+        }
     }
     
     counts <- (tableNgram[,.(featWithCount = .N), by = .(probability)])[order(probability), 
@@ -101,6 +105,50 @@ computeEosCounts <- function(database)
     return(res)
 }
 
+setIdKeys <- function(database)
+{
+    setindex(database$unigram, word);
+    setindex(database$unigram, id);
+    setindex(database$unigram, probability);
+    
+    setindex(database$bigram, id1)
+    setindex(database$bigram, id2)
+    setindex(database$bigram, id1, id2)
+    setindex(database$bigram, probability)
+    
+    setindex(database$trigram, id1)
+    setindex(database$trigram, id2)
+    setindex(database$trigram, id3)
+    setindex(database$trigram, id1, id2, id3)
+    setindex(database$trigram, probability)
+    
+    setindex(database$fourgram, id1)
+    setindex(database$fourgram, id2)
+    setindex(database$fourgram, id3)
+    setindex(database$fourgram, id4)
+    setindex(database$fourgram, id1, id2, id3, id4)
+    setindex(database$fourgram, probability)
+    
+    setindex(database$fivegram, id1)
+    setindex(database$fivegram, id2)
+    setindex(database$fivegram, id3)
+    setindex(database$fivegram, id4)
+    setindex(database$fivegram, id5)
+    setindex(database$fivegram, id1, id2, id3, id4, id5)
+    setindex(database$fivegram, probability)
+    
+    #setkey(database$unigram, id)
+    #setindex(database$unigram, probability)
+    #setkey(database$bigram, id1, id2)
+    #setindex(database$bigram, probability)
+    #setkey(database$trigram, id1, id2, id3)
+    #setindex(database$trigram, probability)
+    #setkey(database$fourgram, id1, id2, id3, id4)
+    #setindex(database$fourgram, probability)
+    
+    return(database)
+}
+
 loadDatabase <- function(ngramPath = "../results/tables")
 {
     # Load tables from CSV files
@@ -141,6 +189,7 @@ loadDatabase <- function(ngramPath = "../results/tables")
     res$info$eosCounts <- computeEosCounts(res)
     
     res <- assignUnknownWordProbability(res, prob = unknownProb)
+    res <- setIdKeys(res)
     
     return(res)
 }
@@ -695,17 +744,15 @@ predictWordKatz <- function(database, string)
         #    break
         eosNgramCondprob <- computeEosCondProb(database, n, candidatesN, preNgramCount)
         message("eosNgramCondprob = ", eosNgramCondprob)
+        alpha <- 1.0
         if (nrow(candidatesN) > 0)
-            results[[n]] <- list(candidates = candidatesN, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
+        {
+            alpha <- computeAlpha(database, candidatesN, results[[n - 1]]$candidates, 
+                         eosNgramCondprob, results[[n - 1]]$eosNgramCondprob)            
+            results[[n]] <- list(candidates = candidatesN, eosNgramCondprob = eosNgramCondprob, alpha = alpha)
+        }
         else
             results[[n]] <- list(candidates = NA, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
-        
-        alpha <- 
-            if (n < maxOrder)
-                computeAlpha(database, candidatesN, results[[n - 1]]$candidates, 
-                                  eosNgramCondprob, results[[n - 1]]$eosNgramCondprob)
-            else
-                1.0
 
         for (i in 1:(n - 1))
             results[[i]]$alpha <- results[[i]]$alpha * alpha
@@ -730,52 +777,13 @@ predictWordKatz <- function(database, string)
             break
     }
 
-    list(results = results,
-         generalResult = (if (is.data.table(generalResult)) {generalResult[order(-katz)]} else {NA}))    
-}
-
-setIdKeys <- function(database)
-{
-    setindex(database$unigram, word);
-    setindex(database$unigram, id);
-    setindex(database$unigram, probability);
+    # Group the words that come from different order n-grams.
+    # Keep the highest order only (the definition of the Katz backoff).
+    if (is.data.table(generalResult))
+        generalResult <- generalResult[order(-origin), .SD[1], by = .(id)][order(-katz)]
     
-    setindex(database$bigram, id1)
-    setindex(database$bigram, id2)
-    setindex(database$bigram, id1, id2)
-    setindex(database$bigram, probability)
-    
-    setindex(database$trigram, id1)
-    setindex(database$trigram, id2)
-    setindex(database$trigram, id3)
-    setindex(database$trigram, id1, id2, id3)
-    setindex(database$trigram, probability)
-    
-    setindex(database$fourgram, id1)
-    setindex(database$fourgram, id2)
-    setindex(database$fourgram, id3)
-    setindex(database$fourgram, id4)
-    setindex(database$fourgram, id1, id2, id3, id4)
-    setindex(database$fourgram, probability)
-    
-    setindex(database$fivegram, id1)
-    setindex(database$fivegram, id2)
-    setindex(database$fivegram, id3)
-    setindex(database$fivegram, id4)
-    setindex(database$fivegram, id5)
-    setindex(database$fivegram, id1, id2, id3, id4, id5)
-    setindex(database$fivegram, probability)
-    
-    #setkey(database$unigram, id)
-    #setindex(database$unigram, probability)
-    #setkey(database$bigram, id1, id2)
-    #setindex(database$bigram, probability)
-    #setkey(database$trigram, id1, id2, id3)
-    #setindex(database$trigram, probability)
-    #setkey(database$fourgram, id1, id2, id3, id4)
-    #setindex(database$fourgram, probability)
-    
-    return(database)
+    list(#results = results,
+         generalResult = (if (is.data.table(generalResult)) { generalResult } else {NA}))    
 }
 
 ## Compute alpha and store it as and additional column
