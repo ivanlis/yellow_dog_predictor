@@ -35,8 +35,11 @@ computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount)
     for (i in countsToDiscount)
     {
         nr <- (counts[r == i, featWithCount])[1]
+        if (is.na(nr))
+            nr = 0
         nrplus1 <- (counts[r == i + 1, featWithCount])[1]
-        
+        if (is.na(nr))
+            nr = 0
         
         discount1 <- ((i + 1) * nrplus1) / (i * nr)
         discountk <- (discount1 - (k + 1) * nkplus1 / n1) / (1 - (k + 1) * nkplus1 / n1) 

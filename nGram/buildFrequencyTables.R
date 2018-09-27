@@ -241,3 +241,18 @@ gatherVocabTables <- function(tablesDirectory = "../results/tables",
         write.csv(accumTable, sprintf("%s/table%dgramVoc.csv", tablesDirectory, ngramType), row.names = FALSE)
     }
 }
+
+filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 2:4, threshold = 1)
+{
+    for (ngramType in ngramsToFilter)
+    {
+        pathName <- sprintf("%s/table%dgramVoc.csv", tableDirectory, ngramType)
+        message("Reading table from ", pathName, "...")
+        currentTable <- fread(pathName)
+        message("Read. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
+        currentTable <- currentTable[probability > threshold]
+        message("After filtering. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
+        
+        write.csv(currentTable, pathName, row.names = FALSE)
+    }
+}
