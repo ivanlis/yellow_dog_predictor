@@ -127,11 +127,11 @@ loadDatabase <- function(ngramPath = "../results/tables")
     res <- list(unigram = tableWord, bigram = tableBigram, 
          trigram = tableTrigram, fourgram = tableFourgram, fivegram = tableFivegram,
          
-         unigramDiscount = computeDiscountFunc(1, tableWord, 1:5),
-         bigramDiscount = computeDiscountFunc(2, tableBigram, 1:5),
-         trigramDiscount = computeDiscountFunc(3, tableTrigram, 1:5),
-         fourgramDiscount = computeDiscountFunc(4, tableFourgram, 1:5),
-         fivegramDiscount = computeDiscountFunc(5, tableFivegram, 1:5),
+         unigramDiscount = computeDiscountFunc(1, tableWord, 1:5, ngramPath = ngramPath),
+         bigramDiscount = computeDiscountFunc(2, tableBigram, 1:5, ngramPath = ngramPath),
+         trigramDiscount = computeDiscountFunc(3, tableTrigram, 1:5, ngramPath = ngramPath),
+         fourgramDiscount = computeDiscountFunc(4, tableFourgram, 1:5, ngramPath = ngramPath),
+         fivegramDiscount = computeDiscountFunc(5, tableFivegram, 1:5, ngramPath = ngramPath),
          
          info = list(maxOrder = maxOrder, 
                      endOfSentenceCount = endOfSentenceCount,
