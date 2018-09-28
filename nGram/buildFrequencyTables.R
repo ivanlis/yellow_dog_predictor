@@ -242,15 +242,21 @@ gatherVocabTables <- function(tablesDirectory = "../results/tables",
     }
 }
 
-filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 2:4, threshold = 1,
+filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 1:5, threshold = 1,
                               countsToDiscount = 1:5)
 {
     source("predictWord.R")
     
     for (ngramType in ngramsToFilter)
     {
-        pathName <- sprintf("%s/table%dgramVoc.csv", tableDirectory, ngramType)
+        pathName <-
+            if (ngramType == 1)
+                sprintf("%s/tabvocab1.csv", tableDirectory)
+            else
+                sprintf("%s/table%dgramVoc.csv", tableDirectory, ngramType)
+        nextPathName <- sprintf("%s/table%dgramVoc.csv", tableDirectory, ngramType + 1)
         discountPathname <- sprintf("%s/discount%d.csv", tableDirectory, ngramType)
+        
         message("Reading table from ", pathName, "...")
         currentTable <- fread(pathName)
         message("Read. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
@@ -261,6 +267,25 @@ filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilt
         
         currentTable <- currentTable[probability > threshold]
         message("After filtering. Columns: ", ncol(currentTable), " Rows: ", nrow(currentTable))
+        
+        if (file.exists(nextPathName))
+        {
+            nextTable <- fread(nextPathName)
+            currentTable <-
+                if (ngramType == 1)
+                    merge(currentTable, nextTable[,.(totalHigher = sum(probability)), by = .(id1)], 
+                          by.x = c("id"), by.y = c("id1"))                    
+                else if (ngramType == 2)
+                    merge(currentTable, nextTable[,.(totalHigher = sum(probability)), by = .(id1, id2)], 
+                          by.x = c("id1", "id2"), by.y = c("id1", "id2"))
+                else if (ngramType == 3)
+                    merge(currentTable, nextTable[,.(totalHigher = sum(probability)), by = .(id1, id2, id3)], 
+                          by.x = c("id1", "id2", "id3"), by.y = c("id1", "id2", "id3"))
+                else
+                    merge(currentTable, nextTable[,.(totalHigher = sum(probability)), by = .(id1, id2, id3, id4)], 
+                          by.x = c("id1", "id2", "id3", "id4"), by.y = c("id1", "id2", "id3", "id4"))
+
+        }
         
         write.csv(currentTable, pathName, row.names = FALSE)
     }
