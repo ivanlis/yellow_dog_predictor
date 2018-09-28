@@ -480,7 +480,7 @@ selectNgramCountLight <- function(database, ids)
         if (n == 5)
         {
             res <- database$fivegram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3] & id4 == ids[4] & id5 == ids[5], 
-                                     .(probability, totalHigher)]        
+                                     .(probability)]        
         } else if (n == 4)
         {
             res <- database$fourgram[id1 == ids[1] & id2 == ids[2] & id3 == ids[3] & id4 == ids[4], 
@@ -498,7 +498,12 @@ selectNgramCountLight <- function(database, ids)
         }
 
         if (nrow(res) > 0)
-            res <- c(res[1, probability], res[1, totalHigher])
+        {   
+            if (ncol(res) > 1)
+                res <- c(res[1, probability], res[1, totalHigher])
+            else
+                res <- c(res[1, probability], 0)
+        }
         else
             res <- c(0, 0)                
         
@@ -953,13 +958,13 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
         currentIds <- tail(ids, ord)
         count <-
             if (!is.na(ids[length(ids)]) && ids[length(ids)] >= 0)
-                selectNgramCountLight(database, currentIds)
+                selectNgramCountLight(database, currentIds)[1]
             else
                 -1
         
         totalCount <- 
             if (ord > 1)
-                selectNgramCountLight(database, head(currentIds, ord - 1))
+                selectNgramCountLight(database, head(currentIds, ord - 1))[1]
             else
                 (database$info$totalUnigramCount + database$info$endOfSentenceCount)
         
