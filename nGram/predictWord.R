@@ -73,7 +73,7 @@ assignUnknownWordProbability <- function(database, prob = 0.0)
     beta <- prob / (1 - prob)
     database$unigramDiscount[, discount := 1 / (1 + beta)]
     database$unigramDiscount <- rbind(database$unigramDiscount,
-                                      data.table(r = database$info$eosCounts[1], discount = 1 / (1 + beta)))
+                                      data.table(r = database$info$endOfSentenceCount, discount = 1 / (1 + beta)))
     setindex(database$unigramDiscount, r)
     
     database$info$unigramDiscountValue <- 1 / (1 + beta)
@@ -168,8 +168,9 @@ loadDatabase <- function(ngramPath = "../results/tables")
     
     
     # Compute some useful values
-    endOfSentenceCount <- tableWord[, sum(probability)] - tableBigram[, sum(probability)]
-    
+    #endOfSentenceCount <- tableWord[, sum(probability)] - tableBigram[, sum(probability)]
+    endOfSentenceCount <- tableWord[, sum(probability - totalHigher)]
+    totalUnigramCount <- tableWord[, sum(probability)]
     
     
     res <- list(unigram = tableWord, bigram = tableBigram, 
@@ -183,10 +184,11 @@ loadDatabase <- function(ngramPath = "../results/tables")
          
          info = list(maxOrder = maxOrder, 
                      endOfSentenceCount = endOfSentenceCount,
+                     totalUnigramCount = totalUnigramCount,
                      probUnknownWord = 0.0))
     
-    res$info$totalCounts <- computeCounts(res)
-    res$info$eosCounts <- computeEosCounts(res)
+    #res$info$totalCounts <- computeCounts(res)
+    #res$info$eosCounts <- computeEosCounts(res)
     
     res <- assignUnknownWordProbability(res, prob = unknownProb)
     res <- setIdKeys(res)
@@ -923,7 +925,7 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
             if (ord > 1)
                 selectNgramCountLight(database, head(currentIds, ord - 1))
             else
-                (database$info$totalCounts[1] + database$info$eosCounts[1])
+                (database$info$totalUnigramCount + database$info$endOfSentenceCount)
         
         
         discount <-
@@ -964,7 +966,7 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
             eosNgramCondprob <- 
                 if (ord == 1)
                     database$info$endOfSentenceCount / 
-                        (database$info$totalCounts[1] + database$info$endOfSentenceCount)
+                        (database$info$totalUnigramCount + database$info$endOfSentenceCount)
                 else #TODO: if possible, use precomputed values for eos counts!!!
                     computeEosCondProb(database, ord, candidatesN, preNminus1count)
             
