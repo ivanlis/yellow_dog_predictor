@@ -7,4 +7,4 @@ results5
 */.Rhistory
 .Rhistory
 doc/rsconnect
-application/*.csv
+application/yellow_dog/*.csv
