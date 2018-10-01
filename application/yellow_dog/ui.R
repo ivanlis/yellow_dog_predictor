@@ -23,11 +23,12 @@ shinyUI(fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-        verbatimTextOutput(outputId = "unigramInfo"),
-        verbatimTextOutput(outputId = "bigramInfo"),
-        verbatimTextOutput(outputId = "trigramInfo"),
-        verbatimTextOutput(outputId = "fourgramInfo"),
-        verbatimTextOutput(outputId = "fivegramInfo")
+        verbatimTextOutput(outputId = "dbInfo"),
+        
+        textInput(inputId = "userText", label = "Enter text"),
+        tags$br(),
+        actionButton(inputId = "submitButton", "Submit text"),
+        verbatimTextOutput(outputId = "suggestion")
     )
   )
 ))
