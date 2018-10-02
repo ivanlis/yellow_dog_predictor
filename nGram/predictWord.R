@@ -7,6 +7,16 @@ fourgramsToSuggest = 50
 maxOrder = 5
 unknownProb = 0.015
 
+# to fit in memory, limit the number of candidates extracted
+# (alpha may be approximate)
+maxCandidates1 = 100
+maxCandidates2 = 100
+maxCandidates3 = 100
+maxCandidates4 = 100
+maxCandidates5 = 100
+maxCandidates6 = 100
+
+
 computeDiscountFunc <- function(ngramType, tableNgram, countsToDiscount, 
                                 ngramPath = "", update = FALSE)
 {
@@ -566,7 +576,8 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
                 
                 database$unigram[, .(wid = id, word)], 
                 by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
-            by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
+            by.x = "count", by.y = "r")[order(-count), 
+                                        .(id, word, count, condprob = condprob1 * discount)][min(.N, 1):min(.N, maxCandidates5)]
     } else if (n == 4)
     {
         discountTable <- database$fourgramDiscount
@@ -592,7 +603,8 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
             
                     database$unigram[, .(wid = id, word)], 
                     by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
-                by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]
+                by.x = "count", by.y = "r")[order(-count), 
+                                        .(id, word, count, condprob = condprob1 * discount)][min(.N, 1):min(.N, maxCandidates4)]
     } else if (n == 3)
     {
         discountTable <- database$trigramDiscount
@@ -613,7 +625,8 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
                 
                 database$unigram[, .(wid = id, word)], 
                 by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
-            by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
+            by.x = "count", by.y = "r")[order(-count), .(id, word, count, 
+                                                    condprob = condprob1 * discount)][min(.N, 1):min(.N, maxCandidates3)]        
         
     } else if (n == 2)
     {
@@ -631,7 +644,8 @@ selectCandidates <- function(database, terms, preNgramCount = -1)
                 
                 database$unigram[, .(wid = id, word)], 
                 by.x = "id", by.y = "wid")[, .(id, word, count, condprob1)], discountTable, 
-            by.x = "count", by.y = "r")[order(-count), .(id, word, count, condprob = condprob1 * discount)]        
+            by.x = "count", by.y = "r")[order(-count), .(id, word, count, 
+                                                    condprob = condprob1 * discount)][min(.N, 1):min(.N, maxCandidates2)]        
     }
     
     return(res)
