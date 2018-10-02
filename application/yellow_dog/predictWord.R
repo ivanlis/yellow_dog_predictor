@@ -769,6 +769,14 @@ predictWordKatz <- function(database, string)
     
     #maxOrder <- 4
     
+    ids <- rep(-1, length(words))
+    for (i in 1:length(ids))
+    {
+        currentId <- database$unigram[word == words[i], id]
+        if (length(currentId) > 0)
+            ids[i] <- currentId
+    }
+    
     results <- vector(mode = "list", length = maxOrder)
     
     eosUnigrams <- database$info$endOfSentenceCount
@@ -782,20 +790,29 @@ predictWordKatz <- function(database, string)
     #TODO: unnecessary?
     #database$unigram[, .(id, condprob = probability / (sum(probability) + eosUnigrams))]
     
+    stopProcessing <- FALSE
     
     for (n in 2:min(maxOrder, length(words) + 1))
     {
         message("Processing n = ", n, "...")
-        terms <- words[(length(words) - n + 2):length(words)]
+        #terms <- words[(length(words) - n + 2):length(words)]
+        termIds <- ids[(length(words) - n + 2):length(words)]
         message("Terms: ", length(terms), ".")
         
         results[[n]] <- list(candidates = NA, eosNgramCondprob = 0, alpha = 1.0)
+        if (stopProcessing || termIds[length(termIds) - n + 2] < 0)
+        {
+            stopProcessing <- TRUE
+            next
+        }
         
-        preNgramCount <- selectNgramCount(database, terms)
+        #preNgramCount <- selectNgramCount(database, terms)
+        preNgramCount <- selectNgramCountLight(database, termIds)
         message("preNgramCount = ", preNgramCount[1])
         #if (preNgramCount == 0)
         #    break
-        candidatesN <- selectCandidates(database, terms, preNgramCount[1])
+        #candidatesN <- selectCandidates(database, terms, preNgramCount[1])
+        candidatesN <- selectCandidatesLight(database, termIds, preNgramCount[1])
         message("candidatesN: ", nrow(candidatesN))
         #if (nrow(candidatesN) == 0)
         #    break
@@ -820,10 +837,13 @@ predictWordKatz <- function(database, string)
     {
         if (is.data.table(results[[n]]$candidates))
         {
-            reformatted <- results[[n]]$candidates[, 
-                                                   .(id, word, count, 
-                                                     katz = condprob * results[[n]]$alpha, 
-                                                     origin = n)]
+#            reformatted <- results[[n]]$candidates[, 
+#                                                   .(id, word, count, 
+#                                                     katz = condprob * results[[n]]$alpha, 
+#                                                     origin = n)]
+            
+            reformatted <- merge(results[[n]]$candidates, database$unigram, 
+                                 by.x = "id", by.y = "id")[, .(id, word, count, katz = condprob * results[[n]]$alpha, origin = n)]
             
             if (is.data.table(generalResult))
                 generalResult <- rbind(generalResult, reformatted)
