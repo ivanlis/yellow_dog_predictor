@@ -829,11 +829,21 @@ predictWordKatz <- function(database, words)
         else
             results[[n]] <- list(candidates = NA, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
 
+        #TODO: test
+        if (n > 2 && !is.na(results[[n - 1]]$candidates) && 
+            nrow(results[[n - 1]]$candidates) > 0)
+        {
+            results[[n - 1]]$candidates <- 
+                results[[n - 1]]$candidates[order(-condprob)][min(.N, 1):min(.N, 50)]
+        }
+        
+        
         for (i in 1:(n - 1))
             results[[i]]$alpha <- results[[i]]$alpha * alpha
     }
     
     generalResult <- NA
+    message("Gathering generalResult...")
     for (n in 2:maxOrder)
     {
         if (is.data.table(results[[n]]$candidates))
