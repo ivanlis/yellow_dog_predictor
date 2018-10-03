@@ -14,19 +14,24 @@ shinyServer(function(input, output) {
     source("predictWord.R")
     ngrams <- loadDatabase(".")
     
-    output$dbInfo <- renderPrint(
-        sprintf("Database loaded: %d unigrams, %d bigrams, %d trigrams, %d fourgrams, %d fivegrams",
-                nrow(ngrams$unigram), nrow(ngrams$bigram), nrow(ngrams$trigram), nrow(ngrams$fourgram),
-                nrow(ngrams$fivegram)))
+#    output$dbInfo <- renderPrint(
+#        sprintf("Database loaded: %d unigrams, %d bigrams, %d trigrams, %d fourgrams, %d fivegrams",
+#                nrow(ngrams$unigram), nrow(ngrams$bigram), nrow(ngrams$trigram), nrow(ngrams$fourgram),
+#                nrow(ngrams$fivegram)))
+    ngramInfo <- data.frame(c(nrow(ngrams$unigram)), c(nrow(ngrams$bigram)), c(nrow(ngrams$trigram)),
+                            c(nrow(ngrams$fourgram)), c(nrow(ngrams$fivegram)))
+    names(ngramInfo) <- c("1-grams", "2-grams", "3-grams", "4-grams", "5-grams")
+    output$dbInfo <- renderTable(ngramInfo)
     
 
     prediction <- eventReactive(input$submitButton, {
         res <- predictWordKatz(ngrams, input$userText)
         if (is.na(res) || is.na(res$generalResult) || nrow(res$generalResult) == 0)
-            "No suggestions"
+            data.frame(words = c("No suggestions"))
         else
-            res$generalResult[1:10]
+            res$generalResult[1:min(nrow(res$generalResult), 10), 
+                              .(word, nGramOrder = origin, nGramCount = count, KatzProb = katz)]
     })
     
-    output$suggestion <- renderPrint(prediction())
+    output$suggestion <- renderTable(prediction())
 })

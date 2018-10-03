@@ -14,16 +14,38 @@ shinyUI(fluidPage(
   
   
     fluidRow(
-        column(10, offset = 2,
+        column(10, offset = 1,
              titlePanel("Yellow Dog Word Predictor"))  
         ),
     
+    hr(),
+    
+#    fluidRow(
+#        column(10, offset = 1,
+#               verbatimTextOutput(outputId = "dbInfo"))
+#        ),
+    
     fluidRow(
-        column(10, offset = 2,
-             verbatimTextOutput(outputId = "dbInfo"),
-             textAreaInput(inputId = "userText", label = "Enter text", width = "300%", height = "500"),
-             actionButton(inputId = "submitButton", "Submit text"),
-             verbatimTextOutput(outputId = "suggestion"))
+        column(10, offset = 1,
+             textAreaInput(inputId = "userText", label = "Enter text", width = "400%", height = "150")
+        )
+    ),
+
+    fluidRow(
+        column(2, offset = 1, actionButton(inputId = "submitButton", "Submit text"))
+    ),
+
+    hr(),
+
+    fluidRow(
+        column(10, offset = 1, tableOutput(outputId = "dbInfo"))  
+    ),
+    
+    hr(),
+    
+    fluidRow(
+        column(10, offset = 1,
+             tableOutput(outputId = "suggestion"))
         )
     )
 )
