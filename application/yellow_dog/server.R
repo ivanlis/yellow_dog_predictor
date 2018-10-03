@@ -20,6 +20,10 @@ shinyServer(function(input, output) {
 #                nrow(ngrams$fivegram)))
     ngramInfo <- data.frame(c(nrow(ngrams$unigram)), c(nrow(ngrams$bigram)), c(nrow(ngrams$trigram)),
                             c(nrow(ngrams$fourgram)), c(nrow(ngrams$fivegram)))
+    
+    hide(id = "loading-content", anim = TRUE, animType = "fade")
+    show("app-content")
+    
     names(ngramInfo) <- c("1-grams", "2-grams", "3-grams", "4-grams", "5-grams")
     output$dbInfo <- renderTable(ngramInfo)
     
