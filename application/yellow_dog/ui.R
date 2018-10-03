@@ -12,23 +12,18 @@ library(shiny)
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
   
-  # Application title
-  titlePanel("Yellow Dog Word Predictor"),
   
-  # Sidebar with a slider input for number of bins 
-  sidebarLayout(
-    sidebarPanel(
-
-    ),
+    fluidRow(
+        column(10, offset = 2,
+             titlePanel("Yellow Dog Word Predictor"))  
+        ),
     
-    # Show a plot of the generated distribution
-    mainPanel(
-        verbatimTextOutput(outputId = "dbInfo"),
-        
-        textInput(inputId = "userText", label = "Enter text"),
-        tags$br(),
-        actionButton(inputId = "submitButton", "Submit text"),
-        verbatimTextOutput(outputId = "suggestion")
+    fluidRow(
+        column(10, offset = 2,
+             verbatimTextOutput(outputId = "dbInfo"),
+             textAreaInput(inputId = "userText", label = "Enter text", width = "300%", height = "500"),
+             actionButton(inputId = "submitButton", "Submit text"),
+             verbatimTextOutput(outputId = "suggestion"))
+        )
     )
-  )
-))
+)
