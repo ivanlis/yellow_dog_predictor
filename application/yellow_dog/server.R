@@ -25,7 +25,10 @@ shinyServer(function(input, output) {
     
 
     prediction <- eventReactive(input$submitButton, {
-        res <- predictWordKatz(ngrams, input$userText)
+        tokenizedInput <- tokenizeInput(input$userText)
+        res <- NA
+        if (length(tokenizedInput[[1]]) > 0)
+            res <- predictWordKatz(ngrams, as.character(tokenizedInput))
         if (is.na(res) || is.na(res$generalResult) || nrow(res$generalResult) == 0)
             data.frame(words = c("No suggestions"))
         else

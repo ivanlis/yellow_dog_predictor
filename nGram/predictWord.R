@@ -1,4 +1,5 @@
 library(data.table)
+library(quanteda)
 
 bigramsToSuggest = 10
 trigramsToSuggest = 50
@@ -763,9 +764,9 @@ computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN,
 }
 
 
-predictWordKatz <- function(database, string)
+predictWordKatz <- function(database, words)
 {
-    words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 4)
+    #words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 4)
     
     #maxOrder <- 4
     
@@ -1087,4 +1088,13 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
             }
         }
     }
+}
+
+tokenizeInput <- function(text, sentenceBoundary = TRUE)
+{
+    if (sentenceBoundary)
+        text <- tokens(text, what = "sentence", include_docvars = FALSE, remove_punct = TRUE)
+    if (ntoken(text) == 0)
+        return(text)
+    return(tokens_tolower(tokens(text[[1]], what = "word", remove_punct = TRUE, include_docvars = FALSE)))
 }
