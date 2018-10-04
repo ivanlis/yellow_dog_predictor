@@ -9,21 +9,19 @@
 
 library(shiny)
 
-# Define server logic required to draw a histogram
 shinyServer(function(input, output) {
+    # Load the DB from files
     source("predictWord.R")
     ngrams <- loadDatabase(".")
-    
-#    output$dbInfo <- renderPrint(
-#        sprintf("Database loaded: %d unigrams, %d bigrams, %d trigrams, %d fourgrams, %d fivegrams",
-#                nrow(ngrams$unigram), nrow(ngrams$bigram), nrow(ngrams$trigram), nrow(ngrams$fourgram),
-#                nrow(ngrams$fivegram)))
+
+    # Display the numbers of n-grams
     ngramInfo <- data.frame(c(nrow(ngrams$unigram)), c(nrow(ngrams$bigram)), c(nrow(ngrams$trigram)),
                             c(nrow(ngrams$fourgram)), c(nrow(ngrams$fivegram)))
     names(ngramInfo) <- c("1-grams", "2-grams", "3-grams", "4-grams", "5-grams")
     output$dbInfo <- renderTable(ngramInfo)
     
 
+    # Build the table of suggested words
     prediction <- eventReactive(input$submitButton, {
         tokenizedInput <- tokenizeInput(input$userText)
         res <- NA

@@ -9,9 +9,7 @@
 
 library(shiny)
 
-# Define UI for application that draws a histogram
 shinyUI(fluidPage(
-  
   
     fluidRow(
         column(10, offset = 1,
@@ -19,11 +17,6 @@ shinyUI(fluidPage(
         ),
     
     hr(),
-    
-#    fluidRow(
-#        column(10, offset = 1,
-#               verbatimTextOutput(outputId = "dbInfo"))
-#        ),
     
     fluidRow(
         column(10, offset = 1,
