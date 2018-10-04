@@ -22,7 +22,14 @@ shinyServer(function(input, output) {
     
 
     # Build the table of suggested words
-    prediction <- eventReactive(input$submitButton, {
+    prediction <- eventReactive(c(input$submitButton,
+                                 input$queryKey
+                                 ),
+        
+    {
+        Sys.sleep(0.2)
+        message(" >>> queryKey = ", input$queryKey)
+        message(" >>> string: ", input$userText)
         tokenizedInput <- tokenizeInput(input$userText)
         res <- NA
         if (length(tokenizedInput[[1]]) > 0)

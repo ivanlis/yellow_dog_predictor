@@ -9,8 +9,22 @@
 
 library(shiny)
 
+jscode <- '
+$(function() {
+    $(document).on("keypress", function(e) {
+        if (e.which == 32 || e.which == 13)
+            //Shiny.onInputChange("queryKey", Math.random());
+        {
+            setTimeout(function(){ Shiny.onInputChange("queryKey", Math.random()); }, 500)
+        }
+    });
+});
+'
+
 shinyUI(fluidPage(
-  
+ 
+    tags$head(tags$script(HTML(jscode))),
+     
     fluidRow(
         column(10, offset = 1,
              titlePanel("Yellow Dog Word Predictor"))  

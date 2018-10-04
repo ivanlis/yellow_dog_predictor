@@ -827,7 +827,10 @@ predictWordKatz <- function(database, words)
             results[[n]] <- list(candidates = candidatesN, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
         }
         else
+        {
             results[[n]] <- list(candidates = NA, eosNgramCondprob = eosNgramCondprob, alpha = 1.0)
+            stopProcessing = TRUE;
+        }
 
         for (i in 1:(n - 1))
             results[[i]]$alpha <- results[[i]]$alpha * alpha
