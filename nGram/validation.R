@@ -2,7 +2,8 @@ library(quanteda)
 library(readtext)
 source("predictWord.R")
 
-computePerplexityForSentence <- function(database, sentence, logBase = 2)
+computePerplexityForSentence <- function(database, sentence, logBase = 2,
+                                         topForAccuracy = -1)
 {
     maxOrder <- database$info$maxOrder
     L <- length(sentence)
