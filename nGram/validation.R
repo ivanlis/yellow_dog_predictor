@@ -15,11 +15,28 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
     # of the order we defined.
     # But if the sentence is shorter, we use shorter n-grams directly.
     if (L < maxOrder)
+    {
+        guessed <- 0
+        
+        if (topForAccuracy > 0)
+        {
+            res <- predictWordKatz(database, sentence[min(1, L - 1), L - 1])
+            if (!is.na(res) && !is.na(res$generalResult) && 
+                nrow(res$generalResult) > 0)
+            {
+                guessed <- as.integer(sentence[L] %in% 
+                        res$generalResult[1:min(topForAccuracy, nrow(res$generalResult)),
+                                          word])
+            }
+        }
+        
         return(
             list(logP = log(computeKatzProbability(database, sentence)$condprob, logBase),
-                 cnt = 1))
+                 cnt = 1, guessed = guessed))
+    }
     
     logP = 0
+    guessed = 0
     #cnt = 0
     for (i in maxOrder:L)
     {
@@ -29,11 +46,24 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
         if (currentProb <= 0)
             error("N-gram ", sentence[(i - maxOrder + 1):i], ": prob = ", currentProb)
         logP <- logP + log(currentProb, logBase)
+        
+        if (topForAccuracy > 0)
+        {
+            res <- predictWordKatz(database, sentence[(i - maxOrder + 1):(i - 1)])
+            if (!is.na(res) && !is.na(res$generalResult) && 
+                nrow(res$generalResult) > 0)
+            {
+                guessed <- guessed + as.integer(sentence[i] %in% 
+                        res$generalResult[1:min(topForAccuracy, nrow(res$generalResult)),
+                                                           word])
+            }
+        }
     }
     
     return(
         list(
             logP = logP,
+            guessed = guessed,
             cnt = L - maxOrder + 1
         )
     )
