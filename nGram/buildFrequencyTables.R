@@ -245,7 +245,7 @@ gatherVocabTables <- function(tablesDirectory = "../results/tables",
 filterVocabTables <- function(tableDirectory = "../resutls/tables", ngramsToFilter = 1:5, threshold = 1,
                               countsToDiscount = 1:5)
 {
-    source("predictWord.R")
+    #source("predictWord.R")
     
     for (ngramType in ngramsToFilter)
     {

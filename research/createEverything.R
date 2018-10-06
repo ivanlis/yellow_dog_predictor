@@ -1,7 +1,7 @@
 source("../TextFileTools/splitFiles.R")
 source("../nGram/extractFeatures.R")
 source("../nGram/buildFrequencyTables.R")
-
+source("../nGram/predictWord.R")
 
 # Split the dataset provided by the course into training and testing datasets
 splitDataset <- function()
@@ -61,7 +61,9 @@ extractCommonFeaturesEnhanced <- function()
 
 buildTrainedModelTables <- function(fromDirectory = commonResDir)
 {
-    for (perc in c(90, 92, 94, 96, 98))
+    #for (perc in c(90, 92, 94, 96, 98))
+    #for (perc in c(90))
+    for (perc in c(92, 94, 96, 98))
     {
         resDir <- sprintf("../results_validation/course%d", perc)
         matrixDir <- sprintf("%s/dfm", resDir)
