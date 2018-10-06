@@ -112,6 +112,8 @@ splitFilesTrainTest <- function(sourcePath = "../materials/datasets/final/en_US"
                 
                 for (line in lines)
                 {
+                    if (nchar(line) == 0)
+                        next
                     # Do we include this line in our sample?
                     isSample <- samplingFlag[lineCnt %% length(samplingFlag) + 1]
                     if (isSample > 0)
