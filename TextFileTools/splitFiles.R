@@ -51,7 +51,7 @@ splitFiles <- function(sourcePath = "../materials/datasets/final/en_US",
 
 splitFilesTrainTest <- function(sourcePath = "../materials/datasets/final/en_US",
                        outputDir = "../materials/datasets/validation",
-                       samplePart = 0.25, trainPart = 0.8,
+                       samplePart = 0.25, trainPart = 0.98,
                        maxLines = 250000,
                        numRandom = 1000000,
                        unifyApostrophe = TRUE,
