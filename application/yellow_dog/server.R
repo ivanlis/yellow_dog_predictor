@@ -28,9 +28,17 @@ shinyServer(function(input, output) {
         
     {
         Sys.sleep(0.2)
-        message(" >>> queryKey = ", input$queryKey)
-        message(" >>> string: ", input$userText)
-        tokenizedInput <- tokenizeInput(input$userText)
+        #message(" >>> queryKey = ", input$queryKey)
+        lines <- sapply(input$userText, function(s) { 
+            gsub("\U0092", "'", 
+                 gsub("’", "'", 
+                      gsub("-", " ", s, fixed = TRUE),  
+                                     fixed = TRUE), 
+                 fixed = TRUE) },
+            USE.NAMES = FALSE)
+        
+        message(" >>> string: ", lines)
+        tokenizedInput <- tokenizeInput(lines)
         res <- NA
         if (length(tokenizedInput[[1]]) > 0)
             res <- predictWordKatz(ngrams, as.character(tokenizedInput))

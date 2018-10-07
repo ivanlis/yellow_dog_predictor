@@ -1095,6 +1095,7 @@ computeKatzProbability <- function(database, words, maxPossibleOrder = maxOrder)
 
 tokenizeInput <- function(text, sentenceBoundary = TRUE)
 {
+    #TODO: transform apostrophe and hyphen
     if (sentenceBoundary)
         text <- tokens(text, what = "sentence", include_docvars = FALSE, remove_punct = TRUE)
     if (ntoken(text) == 0)

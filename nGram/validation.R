@@ -20,7 +20,7 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
         
         if (topForAccuracy > 0)
         {
-            res <- predictWordKatz(database, sentence[min(1, L - 1), L - 1])
+            res <- predictWordKatz(database, sentence[min(1, L - 1):(L - 1)])
             if (!is.na(res) && !is.na(res$generalResult) && 
                 nrow(res$generalResult) > 0)
             {
@@ -69,7 +69,8 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
     )
 }
 
-computePerplexityForTestDirectory <- function(database, dirPath, logBase = 2)
+computePerplexityForTestDirectory <- function(database, dirPath, logBase = 2,
+                                              topForAccuracy = 3)
 {
     files <- list.files(path = dirPath, 
                         pattern = sprintf("*.txt"), 
@@ -78,6 +79,7 @@ computePerplexityForTestDirectory <- function(database, dirPath, logBase = 2)
     
     cnt <- 0
     logP <- 0
+    guessed <- 0
     
     for (f in files)
     {
@@ -94,11 +96,12 @@ computePerplexityForTestDirectory <- function(database, dirPath, logBase = 2)
         {
             sentenceRes <- computePerplexityForSentence(ngrams,
                                                         as.character(partTokens[i]),
-                                                        logBase)
+                                                        logBase, topForAccuracy)
             cnt <- cnt + sentenceRes$cnt
             logP <- logP + sentenceRes$logP
+            guessed <- guessed + sentenceRes$guessed
         }
     }
-    return(list(logP = logP, cnt = cnt, perplexity = logP / cnt))
+    return(list(logP = logP, guessed = guessed, cnt = cnt))
 }
 

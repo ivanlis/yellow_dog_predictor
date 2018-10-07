@@ -53,7 +53,9 @@ splitFilesTrainTest <- function(sourcePath = "../materials/datasets/final/en_US"
                        outputDir = "../materials/datasets/validation",
                        samplePart = 0.25, trainPart = 0.8,
                        maxLines = 250000,
-                       numRandom = 1000000)
+                       numRandom = 1000000,
+                       unifyApostrophe = TRUE,
+                       hyphenToSpace = TRUE)
 {
     files <- list.files(path = sourcePath, 
                         pattern = "*.txt", 
@@ -118,6 +120,14 @@ splitFilesTrainTest <- function(sourcePath = "../materials/datasets/final/en_US"
                     isSample <- samplingFlag[lineCnt %% length(samplingFlag) + 1]
                     if (isSample > 0)
                     {
+                        if (unifyApostrophe)
+                            line <- gsub("\U0092", "'", gsub("’", "'", 
+                                                             line,  fixed = TRUE), 
+                                         fixed = TRUE)
+                        
+                        if (hyphenToSpace)
+                            line <- gsub("-", " ", line, fixed = TRUE)
+                        
                         # Does it belong to the training or the testing set?
                         isTraining <- trainingFlag[lineCnt %% length(trainingFlag)]
                         if (isTraining)
