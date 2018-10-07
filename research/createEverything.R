@@ -118,3 +118,10 @@ buildFullEnhancedModel <- function(perc = 94)
 {
     buildFullModel(fullEnhancedResDir, perc)
 }
+
+
+trainModelsForValidation <- function()
+{
+    extractCommonFeatures()
+    buildTrainedModelTables()
+}
