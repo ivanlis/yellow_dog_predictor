@@ -61,9 +61,9 @@ extractCommonFeaturesEnhanced <- function()
 
 buildTrainedModelTables <- function(fromDirectory = commonResDir)
 {
-    #for (perc in c(90, 92, 94, 96, 98))
+    for (perc in c(90, 92, 94, 96, 98))
     #for (perc in c(90))
-    for (perc in c(92, 94, 96, 98))
+    #for (perc in c(92, 94, 96, 98))
     {
         resDir <- sprintf("../results_validation/course%d", perc)
         matrixDir <- sprintf("%s/dfm", resDir)
@@ -114,7 +114,7 @@ buildFullCourseModel <- function(perc = 94)
 }
 
 # Build enhanced model
-buildFullEnhancedModes <- function(perc = 94)
+buildFullEnhancedModel <- function(perc = 94)
 {
     buildFullModel(fullEnhancedResDir, perc)
 }
