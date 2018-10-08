@@ -94,7 +94,7 @@ computePerplexityForTestDirectory <- function(database, dirPath, logBase = 2,
                                         include_docvars = FALSE))
         for (i in 1:length(partTokens))
         {
-            sentenceRes <- computePerplexityForSentence(ngrams,
+            sentenceRes <- computePerplexityForSentence(database,
                                                         as.character(partTokens[i]),
                                                         logBase, topForAccuracy)
             cnt <- cnt + sentenceRes$cnt
