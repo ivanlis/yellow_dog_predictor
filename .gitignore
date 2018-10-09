@@ -11,6 +11,8 @@ results5_95
 */.Rhistory
 .Rhistory
 doc/rsconnect
+doc/slides-figure
+doc/slides.md
 application/yellow_dog/*.csv
 application/yellow_dog/rsconnect
 

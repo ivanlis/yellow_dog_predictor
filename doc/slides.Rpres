@@ -1,0 +1,60 @@
+Yellow Dog Word Predictor
+========================================================
+author: Ivan Lysiuchenko
+date: October, 12, 2018
+autosize: true
+
+How the model works
+========================================================
+
+- Based on n-grams extracted from ... MB of text
+- Database contains:
+ - ... 1-grams
+ - ... 2-grams
+ - ... 3-grams
+ - ... 4-grams
+ - ... 5-grams
+- *Katz backoff* used:
+ - allows to combine different n-gram orders
+ - handles unknown n-grams
+
+How the model works
+========================================================
+
+Suggestions are searched for this way:
+
+- The user writes some text. We consider the last 4 words $w_{1}w_{2}w_{3}w_{4}$.
+- Search for 5-grams $w_{1}w_{2}w_{3}w_{4}\xi$ by the 4 words entered by the user.
+Take the (Katz) conditional probabilities of the found words
+$p = P(\xi | w_{1}w_{2}w_{3}w_{4})$
+- Search for 4-grams $w_{2}w_{3}w_{4}\xi$ by the 3 last words entered by the user.
+Multiply their Katz probabilities by a correction coefficient $\alpha_{4}$: $p = \alpha_{4}P(\xi | w_{2}w_{3}w_{4})$.
+- Search for 3-grams $w_{3}w_{4}\xi$ by the 2 last words.
+Multiply their Katz probabilities by another coefficient: $p = \alpha_{3}\alpha_{4}P(\xi | w_{3}w_{4})$
+- Do similar things for 2-grams: $p = \alpha_{2}\alpha_{3}\alpha_{4}P(\xi | w_{4})$.
+- Sort by p, eliminate duplicates (keep the suggestion produced by the highest order n-gram).
+
+Performance
+========================================================
+
+The final model was tested on an unknown testing set (text):
+- Metrics:
+ - Cross-entropy:
+ - Perplexity:
+- In ... of the cases the right word was in the top-3 
+of suggested words.
+
+Product Architecture
+========================================================
+
+Three components:
+
+- In-memory database: tables of 1-, ..., 5-grams
+- R code for the Katz backoff (the server side of the Shiny app)
+- Web interface (the UI side of the Shiny app)
+
+
+Look and feel
+========================================================
+
+Image and explanations
