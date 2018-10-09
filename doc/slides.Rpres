@@ -1,8 +1,24 @@
+<style>
+.section .reveal .state-background {
+    background: #ffcc00;}
+.section .reveal h1 {
+    color: white;
+    position: relative;
+    top: 10%;
+    font-size: 200%;}
+.section .reveal p {
+    color: black;
+    position: relative;
+    top: 10%;
+}
+</style>
+
 Yellow Dog Word Predictor
 ========================================================
 author: Ivan Lysiuchenko
 date: October, 12, 2018
 autosize: true
+
 
 How the model works
 ========================================================
@@ -53,6 +69,7 @@ Three components:
 - R code for the Katz backoff (the server side of the Shiny app)
 - Web interface (the UI side of the Shiny app)
 
+Try it out here: [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyapps.io/yellow_dog/)
 
 Look and feel
 ========================================================
