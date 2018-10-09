@@ -140,7 +140,7 @@ buildFrequencyTables <- function(matrixDirectory = "../results/dfm",
         message("Loading frequencies for 1-grams...")
         freqs1 <- loadFrequencies(sprintf("%s/generalDfm1.dat", matrixDirectory), 
                                   sprintf("%s/freq1.dat", matrixDirectory), update)
-        freqs1 <- sort(freqs1)
+        freqs1 <- sort(freqs1, decreasing = TRUE)
         message("Frequencies loaded: ", length(freqs1), " features.")
         # filter them
         threshold <- as.integer(vocabLimit * sum(freqs1))
@@ -164,7 +164,10 @@ buildFrequencyTables <- function(matrixDirectory = "../results/dfm",
     
     # Store the selected vocabulary in a data table.
     freqs1 <- data.table(id = 1:length(freqs1), word = names(freqs1), probability = freqs1)
-    setkey(freqs1, word)
+    freqs1 <- freqs1[order(-probability)]
+    setindex(freqs1, word)
+    setindex(freqs1, id)
+    #setkey(freqs1, word)
     
     vocabTablePathname <- sprintf("%s/tabvocab1.csv", tablesDirectory)
     write.csv(freqs1, vocabTablePathname, row.names = FALSE)
