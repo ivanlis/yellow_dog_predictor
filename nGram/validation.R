@@ -18,7 +18,7 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
     {
         guessed <- 0
         
-        if (topForAccuracy > 0)
+        if (topForAccuracy > 0 && L > 1)
         {
             res <- predictWordKatz(database, sentence[min(1, L - 1):(L - 1)])
             if (!is.na(res) && !is.na(res$generalResult) && 
