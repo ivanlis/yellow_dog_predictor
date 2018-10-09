@@ -140,7 +140,7 @@ buildFrequencyTables <- function(matrixDirectory = "../results/dfm",
         message("Loading frequencies for 1-grams...")
         freqs1 <- loadFrequencies(sprintf("%s/generalDfm1.dat", matrixDirectory), 
                                   sprintf("%s/freq1.dat", matrixDirectory), update)
-        freqs1 <- freqs1[order(-probability)]
+        freqs1 <- sort(freqs1)
         message("Frequencies loaded: ", length(freqs1), " features.")
         # filter them
         threshold <- as.integer(vocabLimit * sum(freqs1))
