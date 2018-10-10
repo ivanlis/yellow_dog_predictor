@@ -36,8 +36,10 @@ shinyUI(fluidPage(
         column(10, offset = 1,
                p("Source code: ", 
                  a("https://github.com/ivanlis/yellow_dog_predictor", 
-                   href = "https://github.com/ivanlis/yellow_dog_predictor"),
-                 "Presentation: "))  
+                   href = "https://github.com/ivanlis/yellow_dog_predictor"), br(),
+                 "Presentation: ",
+                 a("https://ivanlis.github.io/yellow_dog_predictor/final_slides.html",
+                   href = "https://ivanlis.github.io/yellow_dog_predictor/final_slides.html")))  
     ),    
     
     fluidRow(
@@ -58,14 +60,14 @@ shinyUI(fluidPage(
     hr(),
 
     fluidRow(
-        column(10, offset = 1, tableOutput(outputId = "dbInfo"))  
+        column(10, offset = 1,
+               tableOutput(outputId = "suggestion"))
     ),
     
     hr(),
     
     fluidRow(
-        column(10, offset = 1,
-             tableOutput(outputId = "suggestion"))
-        )
+        column(10, offset = 1, tableOutput(outputId = "dbInfo"))  
     )
-)
+    
+))
