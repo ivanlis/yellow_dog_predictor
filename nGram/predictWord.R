@@ -760,7 +760,10 @@ computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN,
     sumPredictedNNminus1 <- eosCondProbNminus1
     if (nrow(candidatesN) > 0)
         sumPredictedNNminus1 <- sumPredictedNNminus1 + candidatesNminus1[id %in% candidatesN$id, sum(condprob)] 
-    return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
+    if (sumPredictedNNminus1 != 1)
+        return((1 - sumPredictedNN) / (1 - sumPredictedNNminus1))
+    else
+        return(1.0)
 }
 
 
