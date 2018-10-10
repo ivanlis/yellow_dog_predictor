@@ -11,6 +11,9 @@ computePerplexityForSentence <- function(database, sentence, logBase = 2,
     #message(" >>> SENTENCE: ", sentence)
     cat(" >>> SENTENCE: ", sentence)
     
+    if (length(sentence) == 0)
+        return(list(logP = 0, guessed = 0, cnt = 0))
+    
     # According to Katz, we start at word number maxOrder, first n-gram
     # of the order we defined.
     # But if the sentence is shorter, we use shorter n-grams directly.
