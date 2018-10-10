@@ -34,6 +34,19 @@ shinyUI(fluidPage(
     
     fluidRow(
         column(10, offset = 1,
+               p("Source code: ", 
+                 a("https://github.com/ivanlis/yellow_dog_predictor", 
+                   href = "https://github.com/ivanlis/yellow_dog_predictor"),
+                 "Presentation: "))  
+    ),    
+    
+    fluidRow(
+        column(10, offset = 1, 
+               p("Please, enter a text in English. As you press Space or Enter or push the 'Submit text' button, suggestions will appear."))
+    ),
+    
+    fluidRow(
+        column(10, offset = 1,
              textAreaInput(inputId = "userText", label = "Enter text", width = "400%", height = "150")
         )
     ),
