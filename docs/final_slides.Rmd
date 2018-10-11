@@ -54,6 +54,8 @@ Three components:
 
 Try it out here: [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyapps.io/yellow_dog/)
 
-## Look and feel
+## Web interface: very easy to use
 
-Image and explanations
+```{r out.width = "65%", fig.align="center"}
+knitr::include_graphics("yd.png")
+```
