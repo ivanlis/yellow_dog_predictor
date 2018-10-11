@@ -41,7 +41,8 @@ shinyServer(function(input, output) {
         tokenizedInput <- tokenizeInput(lines)
         res <- NA
         if (length(tokenizedInput[[1]]) > 0)
-            res <- predictWordKatz(ngrams, as.character(tokenizedInput))
+            res <- predictWordKatz(ngrams, as.character(tokenizedInput), 
+                                   ignoreLastUnknownWords = TRUE)
         if (is.na(res) || is.na(res$generalResult) || nrow(res$generalResult) == 0)
             data.frame(words = c("No suggestions"))
         else

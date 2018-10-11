@@ -429,19 +429,24 @@ computeAlpha <- function(database, candidatesN, candidatesNminus1, eosCondProbN,
 }
 
 
-predictWordKatz <- function(database, words)
+predictWordKatz <- function(database, words, ignoreLastUnknownWords = FALSE)
 {
-    #words <- tail(strsplit(tolower(string), "\\s+", fixed = FALSE, perl = TRUE)[[1]], 4)
-    
-    #maxOrder <- 4
-    
     ids <- rep(-1, length(words))
+    lastKnownWord <- 0
     for (i in 1:length(ids))
     {
         currentId <- database$unigram[word == words[i], id]
         if (length(currentId) > 0)
+        {
             ids[i] <- currentId
+            lastKnownWord <- i
+        }
     }
+    
+    if (lastKnownWord == 0)
+        return(list(generalResult = NA))
+    if (ignoreLastUnknownWords)
+        ids <- ids[1:lastKnownWord]
     
     results <- vector(mode = "list", length = maxOrder)
     
@@ -458,11 +463,10 @@ predictWordKatz <- function(database, words)
     
     stopProcessing <- FALSE
     
-    for (n in 2:min(maxOrder, length(words) + 1))
+    for (n in 2:min(maxOrder, length(ids) + 1))
     {
         message("Processing n = ", n, "...")
-        #terms <- words[(length(words) - n + 2):length(words)]
-        termIds <- ids[(length(words) - n + 2):length(words)]
+        termIds <- ids[(length(ids) - n + 2):length(ids)]
         message("Terms: ", length(terms), ".")
         
         results[[n]] <- list(candidates = NA, eosNgramCondprob = 0, alpha = 1.0)
@@ -506,11 +510,6 @@ predictWordKatz <- function(database, words)
     {
         if (is.data.table(results[[n]]$candidates))
         {
-#            reformatted <- results[[n]]$candidates[, 
-#                                                   .(id, word, count, 
-#                                                     katz = condprob * results[[n]]$alpha, 
-#                                                     origin = n)]
-            
             reformatted <- merge(results[[n]]$candidates, database$unigram, 
                                  by.x = "id", by.y = "id")[, .(id, word, count, katz = condprob * results[[n]]$alpha, origin = n)]
             
