@@ -27,6 +27,8 @@ Try it out at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyap
 
 ## License
 
+Released under the terms of the 3-clause BSD license. See COPYING.txt.
+
 ## References
 
 1. D. Jurafsky, J. Martin. Speech and language processing. Draft of August 7, 2018. Chapter 3.
