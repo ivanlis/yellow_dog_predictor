@@ -1,0 +1,19 @@
+---
+title: "Using the Yellow Dog Word Predictor"
+author: "Ivan Lysiuchenko"
+date: "October 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this document we describe how an n-gram model can be trained, evaluated
+and used by means of the Yellow Dog Word Predictor. 
+
+## Training a model
+
+## Working with a trained model
+
+## Evaluating the model
