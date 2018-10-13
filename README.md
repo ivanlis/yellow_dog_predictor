@@ -21,9 +21,10 @@ Designed to work with English input.
 ## Details
 
 For more information on building the model, its validation and deployment,
-see [this document](docs/using.html).
+see docs/using.html on your local copy or online:
+[https://ivanlis.github.io/yellow_dog_predictor/using.html](https://ivanlis.github.io/yellow_dog_predictor/using.html)
 
-Try it out at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyapps.io/yellow_dog/)
+Try the Shiny app at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyapps.io/yellow_dog/)
 
 ## License
 
