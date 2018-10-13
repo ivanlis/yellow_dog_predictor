@@ -15,4 +15,4 @@ doc/slides-figure
 doc/slides.md
 application/yellow_dog/*.csv
 application/yellow_dog/rsconnect
-
+*.swp
