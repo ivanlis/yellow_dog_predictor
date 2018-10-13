@@ -100,16 +100,22 @@
 <slide class=""><hgroup><h2>How the model works</h2></hgroup><article  id="how-the-model-works">
 
 <ul>
-<li>Based on n-grams extracted from &#8230; MB of text</li>
-<li>Database contains:</li>
-<li>&#8230; 1-grams</li>
-<li>&#8230; 2-grams</li>
-<li>&#8230; 3-grams</li>
-<li>&#8230; 4-grams</li>
-<li>&#8230; 5-grams</li>
-<li><em>Katz backoff</em> used:</li>
+<li>Based on n-grams extracted from <strong>552 MiB</strong> of text</li>
+<li>Database contains:
+
+<ul>
+<li><strong>14867</strong> 1-grams</li>
+<li><strong>2835413</strong> 2-grams</li>
+<li><strong>6064040</strong> 3-grams</li>
+<li><strong>4595655</strong> 4-grams</li>
+<li><strong>2327715</strong> 5-grams</li>
+</ul></li>
+<li><em>Katz backoff</em> used:
+
+<ul>
 <li>allows to combine different n-gram orders</li>
 <li>handles unknown n-grams</li>
+</ul></li>
 </ul>
 
 </article></slide><slide class=""><hgroup><h2>How the model works</h2></hgroup><article  id="how-the-model-works-1">
@@ -120,17 +126,26 @@
 <li>Search for 4-grams \(w_{2}w_{3}w_{4}\xi\). Multiply the Katz probabilities by a correction coefficient \(\alpha_{4}\): \(p = \alpha_{4}P(\xi | w_{2}w_{3}w_{4})\).</li>
 <li>Search for 3-grams \(w_{3}w_{4}\xi\). Multiply their Katz probabilities by another coefficient: \(p = \alpha_{3}\alpha_{4}P(\xi | w_{3}w_{4})\).</li>
 <li>Do similar things for 2-grams: \(p = \alpha_{2}\alpha_{3}\alpha_{4}P(\xi | w_{4})\).</li>
-<li>Sort by p (decreasing), eliminate duplicates (keep the suggestion produced by the highest order n-gram).</li>
+<li>Sort by <em>p</em> (decreasing), eliminate duplicates (keep the suggestion produced by the highest order n-gram).</li>
 </ul>
 
 </article></slide><slide class=""><hgroup><h2>Performance</h2></hgroup><article  id="performance">
 
-<p>The final model was tested on an unknown testing set (text):</p>
+<p>The final model was tested on an unseen testing set (text):</p>
 
 <ul>
-<li>Cross-entropy:</li>
-<li>Perplexity:</li>
-<li>In &#8230; of the cases the right word was in the top-3 of suggested words.</li>
+<li>Cross-entropy (base 2 logarithm): <strong>7.57</strong></li>
+<li>Perplexity: <strong>189.84</strong></li>
+<li><strong>In 27% of the cases the actual word was in the top-3 of suggested words.</strong></li>
+</ul>
+
+<p>Testing set characteristics:</p>
+
+<ul>
+<li>Taken from blog posts, news and forums.</li>
+<li>Contains <strong>1073</strong> sentences and <strong>18241</strong> words.</li>
+<li>Prediction performed on <strong>14209</strong> n-grams.</li>
+<li>Each sentence considered independently.</li>
 </ul>
 
 </article></slide><slide class=""><hgroup><h2>Product Architecture</h2></hgroup><article  id="product-architecture">

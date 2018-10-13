@@ -11,16 +11,34 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## How the model works
 
-- Based on n-grams extracted from ... MB of text
+```{r echo=FALSE, message=FALSE, warning=FALSE, error=FALSE, results="hide"}
+dataDirectory <- "../materials/datasets/english_split"
+modelDirectory <- "../results5_94/tables"
+testingSetDirectory <- "../materials/datasets/validation_external2/processed"
+
+source("../nGram/predictWord.R")
+ngram <- loadDatabase(modelDirectory)
+
+# compute total data files size
+files <- list.files(path = dataDirectory, 
+                    pattern = "*.txt", 
+                    full.names = TRUE, 
+                    recursive = FALSE)
+totalFileSize <- sum(
+    sapply(files, function(x){ file.size(x) }, USE.NAMES = FALSE)
+)
+```
+
+- Based on n-grams extracted from **`r round(totalFileSize / (1024 * 1024))` MiB** of text
 - Database contains:
- - ... 1-grams
- - ... 2-grams
- - ... 3-grams
- - ... 4-grams
- - ... 5-grams
+    - **`r nrow(ngram$unigram)`** 1-grams
+    - **`r nrow(ngram$bigram)`** 2-grams
+    - **`r nrow(ngram$trigram)`** 3-grams
+    - **`r nrow(ngram$fourgram)`** 4-grams
+    - **`r nrow(ngram$fivegram)`** 5-grams
 - *Katz backoff* used:
- - allows to combine different n-gram orders
- - handles unknown n-grams
+    - allows to combine different n-gram orders
+    - handles unknown n-grams
 
 ## How the model works
 
@@ -33,16 +51,40 @@ Multiply the Katz probabilities by a correction coefficient $\alpha_{4}$: $p = \
 - Search for 3-grams $w_{3}w_{4}\xi$.
 Multiply their Katz probabilities by another coefficient: $p = \alpha_{3}\alpha_{4}P(\xi | w_{3}w_{4})$.
 - Do similar things for 2-grams: $p = \alpha_{2}\alpha_{3}\alpha_{4}P(\xi | w_{4})$.
-- Sort by p (decreasing), eliminate duplicates (keep the suggestion produced by the highest order n-gram).
+- Sort by *p* (decreasing), eliminate duplicates (keep the suggestion produced by the highest order n-gram).
 
 ## Performance
 
-The final model was tested on an unknown testing set (text):
+```{r echo=FALSE, message=FALSE, results="hide"}
+validRes <- read.csv("../materials/datasets/validation_external2/result5_94.csv")
+crossEntropy <- -validRes[1, "logP"] / validRes[1, "cnt"]
+perplexity <- 2 ^ crossEntropy
+hitPercentage <- 100 * validRes[1, "guessed"] / validRes[1, "cnt"]
+library(quanteda)
+library(readtext)
+partCorpus <- corpus(
+    readtext(testingSetDirectory, cache = FALSE, verbosity = 3))
+partCorpus <- corpus_reshape(partCorpus, to = "sentences", use_docvars = FALSE)
+sentenceCnt <- ndoc(partCorpus)
+partTokens <- tokens_tolower(tokens(partCorpus, 
+                     what = "word", 
+                     remove_punct = TRUE, 
+                     include_docvars = FALSE))
+wordCnt <- sum(ntoken(partTokens))
+```
 
-- Cross-entropy:
-- Perplexity:
-- In ... of the cases the right word was in the top-3 
-of suggested words.
+The final model was tested on an unseen testing set (text):
+
+- Cross-entropy (base 2 logarithm): **`r sprintf("%0.2f", crossEntropy)`**
+- Perplexity: **`r sprintf("%0.2f", perplexity)`**
+- **In `r round(hitPercentage)`% of the cases the actual word was in the top-3 of suggested words.**
+
+Testing set characteristics:
+
+- Taken from blog posts, news and forums.
+- Contains **`r sentenceCnt`** sentences and **`r wordCnt`** words.
+- Prediction performed on **`r validRes[1, "cnt"]`** n-grams.
+- Each sentence considered independently.
 
 ## Product Architecture
 
