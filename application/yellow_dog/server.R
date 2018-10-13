@@ -13,6 +13,9 @@ shinyServer(function(input, output) {
     # Load the DB from files
     source("predictWord.R")
     ngrams <- loadDatabase(".")
+    
+    hideElement(id = "loading-content", anim = TRUE, animType = "fade")
+    showElement(id = "app-content")
 
     # Display the numbers of n-grams
     ngramInfo <- data.frame(c(nrow(ngrams$unigram)), c(nrow(ngrams$bigram)), c(nrow(ngrams$trigram)),
