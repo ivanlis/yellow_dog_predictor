@@ -16,6 +16,8 @@ performance on a testing set: accuracy and perplexity.
 Once an n-gram model is built, you can run the prediction algorithm as part
 of a web (Shiny) application.
 
+Designed to work with English input.
+
 ## Details
 
 For more information on building the model, its validation and deployment,
@@ -25,3 +27,12 @@ Try it out at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyap
 
 ## License
 
+## References
+
+1. D. Jurafsky, J. Martin. Speech and language processing. Draft of August 7, 2018. Chapter 3.
+2. S. Katz. Estimation of probabilities from sparse data for the language model component of
+a speech recognizer. IEEE Transactions on Acoustics, Speech and Signal Processing, 1987. 
+3. K. Welbers, W. van Atteveldt, K. Benoit. Text Analysis in R. Communication Methods and
+Measures, 2017.
+4. D. Attali. Shiny tips & tricks for improving your apps and solving common problems.
+[https://github.com/daattali/advanced-shiny](https://github.com/daattali/advanced-shiny) 
