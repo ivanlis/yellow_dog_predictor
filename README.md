@@ -28,7 +28,7 @@ Try the Shiny app at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.
 
 ## License
 
-Released under the terms of the 3-clause BSD license. See COPYING.txt.
+Released under the terms of the 3-clause BSD license. See (COPYING.txt)[COPYING.txt].
 
 ## References
 
