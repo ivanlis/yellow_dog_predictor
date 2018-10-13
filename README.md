@@ -21,7 +21,7 @@ Designed to work with English input.
 ## Details
 
 For more information on building the model, its validation and deployment,
-see ...
+see [this document](docs/using.html).
 
 Try it out at [https://ivanlis.shinyapps.io/yellow_dog/](https://ivanlis.shinyapps.io/yellow_dog/)
 
