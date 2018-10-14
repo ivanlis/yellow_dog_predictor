@@ -2,7 +2,7 @@
 title: "Yellow Dog Word Predictor"
 subtitle: "Data Science specialization capstone project"
 author: "Ivan Lysiuchenko"
-date: "October 9, 2018"
+date: "October 14, 2018"
 output: ioslides_presentation
 ---
 
