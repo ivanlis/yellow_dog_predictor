@@ -11,7 +11,7 @@
 
 <meta name="author" content="Ivan Lysiuchenko" />
 
-<meta name="date" content="2018-10-13" />
+<meta name="date" content="2018-10-14" />
 
 <title>Using the Yellow Dog Word Predictor</title>
 
@@ -121,20 +121,103 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Using the Yellow Dog Word Predictor</h1>
 <h4 class="author"><em>Ivan Lysiuchenko</em></h4>
-<h4 class="date"><em>October 13, 2018</em></h4>
+<h4 class="date"><em>October 14, 2018</em></h4>
 
 </div>
 
 
-<p>In this document we describe how an n-gram model can be trained, evaluated and used by means of the Yellow Dog Word Predictor.</p>
+<p>In this document we briefly describe how an n-gram model can be trained, evaluated and used.</p>
 <div id="training-a-model" class="section level2">
 <h2>Training a model</h2>
+<p>Given a set of text files, we can extract n-grams from them and train our model.</p>
+<div id="text-preprocessing" class="section level3">
+<h3>Text preprocessing</h3>
+<p>The aim of the two text preprocessing functions existing in this piece of software is to standardize the usage of some characters, as well as split large files into chunks to enable their further processing. Let’s source the script which defines these functions:</p>
+<pre class="r"><code>setwd(&quot;nGram&quot;)
+source(&quot;../TextFileTools/splitFiles.R&quot;)</code></pre>
+<p>If our aim is using the entire text stored in a directory, we have to perform a function call like this:</p>
+<pre class="r"><code>splitFiles(sourcePath = &quot;../materials/datasets/final/en_US&quot;,
+           outputDir = &quot;../materials/datasets/english_split&quot;)</code></pre>
+<p>The other function carries out the same kind of preprocessing, but additionally divides the text into the training and testing datasets:</p>
+<pre class="r"><code>set.seed(2018)
+splitFilesTrainTest(&quot;../materials/datasets/final/en_US&quot;,
+                    &quot;../materials/datasets/validation&quot;)</code></pre>
+<p>This function is able to choose lines from the text randomly, so we use it if we want to work with a subset of the raw data only. It’s possible to adjust how many lines are to be chosen and which part of them is to be used for training. See the function’s arguments in the source code, their usage is straightforward.</p>
+</div>
+<div id="building-n-gram-tables" class="section level3">
+<h3>Building n-gram tables</h3>
+<p>Now let’s create a directory for the n-gram model we’re about to build and perform the steps necessary to obtain the model.</p>
+<pre class="r"><code>source(&quot;extractFeatures.R&quot;)
+
+fromDirectory &lt;- &quot;../materials/datasets/validation_course&quot;
+toDirectory &lt;- &quot;../results&quot;
+
+if (!dir.exists(toDirectory))
+    dir.create(toDirectory)
+extractFeatures(textDirectory = fromDirectory,
+                tokensDirectory = toDirectory,
+                matrixDirectory = toDirectory,
+                buildTokens = TRUE, buildMatrices = TRUE, ngramTypes = 1:5)
+extractFeatures(textDirectory = fromDirectory,
+                tokensDirectory = toDirectory,
+                matrixDirectory = toDirectory,
+                buildTokens = FALSE, buildMatrices = FALSE, mergeMatrices = TRUE,
+                ngramTypes = c(1))</code></pre>
+<p>At this moment we have tokenized our dataset, but we still are using all the n-grams encountered in it. In the process of creating the n-gram tables (described in the next code chunk) we have to sacrifice a part of them, so that we can adjust the model size to the available resources.</p>
+<p>The <em>vocabLimit</em> parameter for <em>buildFrequencyTables()</em> says which part of the original vocabulary “coverage” we keep. That is, if vocabLimit is 0.94, we keep the words responsible for 94% of all tokens occurrencies. Then we keep only those n-grams whose words belong to the filtered vocabulary.</p>
+<p>The <em>threshold</em> parameter for <em>filterVocabTables()</em> is applied afterwards. We reject all the n-grams which occur <em>threshold</em> times or fewer. In this project we used 1 as threshold value.</p>
+<pre class="r"><code>source(&quot;buildFrequencyTables.R&quot;)
+
+# The percentage of the original vocabulary we want to use
+perc &lt;- 94
+
+resDir &lt;- &quot;../results&quot;
+matrixDir &lt;- sprintf(&quot;%s/dfm&quot;, resDir)
+tablesDir &lt;- sprintf(&quot;%s/tables&quot;, resDir)
+if (!dir.exists(resDir))
+    dir.create(resDir)
+if (!dir.exists(matrixDir))
+    dir.create(matrixDir)
+if (!dir.exists(tablesDir))
+    dir.create(tablesDir)
+file.copy(sprintf(&quot;%s/generalDfm1.dat&quot;, resDir), matrixDir)
+buildFrequencyTables(matrixDirectory = matrixDir, resultsDirectory = resDir,
+                     tablesDirectory = tablesDir, ngramsToFilter = 2:5,
+                     vocabLimit = 0.01 * perc, update = TRUE)
+gatherVocabTables(tablesDirectory = tablesDir, ngramsToFilter = 2:5)
+filterVocabTables(tableDirectory = tablesDir, ngramsToFilter = 1:5,
+                      countsToDiscount = 1:5, threshold = 1)</code></pre>
+<p>Some wrapper functions exist in research/createEverything.R. They execute the steps outlined above.</p>
+<p>When this code is executed successfully, we will have a directory called <em>results/tables</em> in the project root. We are interested in the CSV files inside that directory.</p>
+</div>
 </div>
 <div id="working-with-a-trained-model" class="section level2">
 <h2>Working with a trained model</h2>
+<p>The CSV files created at the end of the previous section contain the n-gram tables we need in order to predict words. We load them with this functions call:</p>
+<pre class="r"><code>source(&quot;predictWord.R&quot;)
+ngrams &lt;- loadDatabase(&quot;../results/tables&quot;)</code></pre>
+<p>The variable <em>ngrams</em> contains all the data necessary to make predictions and evaluate the probability of n-grams. We build the list of suggested words as follows:</p>
+<pre class="r"><code>res &lt;- predictWordKatz(ngrams, c(&quot;as&quot;, &quot;soon&quot;, &quot;as&quot;))</code></pre>
+<p><em>res$generalResult</em> is a data.table object containing the list of words sorted by their Katz probability (descending order). Notice that the input to the <em>predictWordKatz()</em> function has to be a character vector with all the words in <em>lowercase</em>. See the <em>tokenizeInput()</em> function in <em>predictWord.R</em> for the way the input text is prepared. See also how this function is used in the Shiny app: <em>application/yellow_dog/server.R</em>.</p>
+<p>The following call estimates the conditional probability of the last word of a phrase:</p>
+<pre class="r"><code>res &lt;- computeKatzProbability(ngrams, c(&quot;i&quot;, &quot;hope&quot;, &quot;you&quot;, &quot;have&quot;, &quot;a&quot;))</code></pre>
+<p>The result contains the conditional probability estimate, the n-gram order which gave the estimate, the number of occurrencies of the n-gram and some more fields. The aforementioned function is used first of all for model validation.</p>
 </div>
-<div id="evaluating-the-model" class="section level2">
-<h2>Evaluating the model</h2>
+<div id="evaluating-performance" class="section level2">
+<h2>Evaluating performance</h2>
+<p>The script <em>validation.R</em> defines two fuctions which can be used to compute the cross entropy and accuracy on a training set. <em>computePerplexityForSentence()</em> processes a test sentence given as a character vector:</p>
+<pre class="r"><code>res &lt;- computePerplexityForSentence(ngrams,
+                c(&quot;this&quot;, &quot;is&quot;, &quot;an&quot;, &quot;example&quot;, &quot;sentence&quot;, &quot;to&quot;,
+                  &quot;see&quot;, &quot;how&quot;, &quot;validation&quot;, &quot;works&quot;), topForAccuracy = 3)</code></pre>
+<p>If <em>topForAccuracy = -1</em>, the only thing we compute is the sum of probability logarithms. If <em>topForAccuracy</em> is a positive integer number, we compute the number of correct guesses as well. For example, if <em>topForAccuracy = 3</em>, a guess is considered correct if the actual word is among the top-3 suggested words.</p>
+<p>By default, base 2 is taken for logarithms, but any base may be used instead (see the parameters). Given the output of <em>computePerplexityForSentence()</em>, we can compute the cross-entropy, perplexity and accuracy (in terms of correct guesses):</p>
+<pre class="r"><code>crossEntropy &lt;- -res$logP / res$cnt
+perplexity &lt;- 2.0 ^ crossEntropy
+accuracy &lt;- res$guesses / res$cnt</code></pre>
+<p>The function <em>computePerplexityForTestDirectory()</em> accepts a directory with test set text files. The meaning of the rest of its parameters is the same as we have just described. All the necessary tokenizing, lowercasing, etc. is performed automatically:</p>
+<pre class="r"><code>res &lt;- computePerplexityForTestDirectory(ngrams, 
+                    &quot;../materials/datasets/validation/testing&quot;)</code></pre>
+<p>Notice that the input texts are divided into sentences. Every sentence is processed independently using <em>computePerplexityForSentence()</em>.</p>
 </div>
 
 

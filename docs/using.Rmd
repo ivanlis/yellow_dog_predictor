@@ -1,7 +1,7 @@
 ---
 title: "Using the Yellow Dog Word Predictor"
 author: "Ivan Lysiuchenko"
-date: "October 13, 2018"
+date: "October 14, 2018"
 output: html_document
 ---
 
@@ -9,11 +9,186 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-In this document we describe how an n-gram model can be trained, evaluated
-and used by means of the Yellow Dog Word Predictor. 
+In this document we briefly describe how an n-gram model can be trained, evaluated
+and used.
 
 ## Training a model
 
+Given a set of text files, we can extract n-grams from them and train our model.
+
+### Text preprocessing
+
+The aim of the two text preprocessing functions existing in this piece of software
+is to standardize the usage of some characters, as well as split large files into
+chunks to enable their further processing. Let's source the script which defines
+these functions:
+
+```{r echo=TRUE, eval=FALSE}
+setwd("nGram")
+source("../TextFileTools/splitFiles.R")
+```
+
+If our aim is using the entire text stored in a directory, we have to perform 
+a function call like this:
+
+```{r echo=TRUE, eval=FALSE}
+splitFiles(sourcePath = "../materials/datasets/final/en_US",
+           outputDir = "../materials/datasets/english_split")
+```
+
+The other function carries out the same kind of preprocessing, but additionally
+divides the text into the training and testing datasets:
+
+```{r echo=TRUE, eval=FALSE}
+set.seed(2018)
+splitFilesTrainTest("../materials/datasets/final/en_US",
+                    "../materials/datasets/validation")
+```
+
+This function is able to choose lines from the text randomly, so we use it
+if we want to work with a subset of the raw data only. It's possible to adjust
+how many lines are to be chosen and which part of them is to be used for training.
+See the function's arguments in the source code, their usage is straightforward.
+
+### Building n-gram tables
+
+Now let's create a directory for the n-gram model we're about to build and
+perform the steps necessary to obtain the model.
+
+```{r echo=TRUE, eval=FALSE}
+source("extractFeatures.R")
+
+fromDirectory <- "../materials/datasets/validation_course"
+toDirectory <- "../results"
+
+if (!dir.exists(toDirectory))
+    dir.create(toDirectory)
+extractFeatures(textDirectory = fromDirectory,
+                tokensDirectory = toDirectory,
+                matrixDirectory = toDirectory,
+                buildTokens = TRUE, buildMatrices = TRUE, ngramTypes = 1:5)
+extractFeatures(textDirectory = fromDirectory,
+                tokensDirectory = toDirectory,
+                matrixDirectory = toDirectory,
+                buildTokens = FALSE, buildMatrices = FALSE, mergeMatrices = TRUE,
+                ngramTypes = c(1))
+```
+
+At this moment we have tokenized our dataset, but we still are using all the
+n-grams encountered in it. In the process of creating the n-gram tables
+(described in the next code chunk) we have to sacrifice a part of them, 
+so that we can adjust the model size to the available resources.
+
+The *vocabLimit* parameter for *buildFrequencyTables()* says which part of the original
+vocabulary "coverage" we keep. That is, if vocabLimit is 0.94, we keep the words
+responsible for 94% of all tokens occurrencies. Then we keep only those n-grams
+whose words belong to the filtered vocabulary.
+
+The *threshold* parameter for *filterVocabTables()* is applied afterwards. We reject
+all the n-grams which occur *threshold* times or fewer. In this project
+we used 1 as threshold value.
+
+```{r echo=TRUE, eval=FALSE}
+source("buildFrequencyTables.R")
+
+# The percentage of the original vocabulary we want to use
+perc <- 94
+
+resDir <- "../results"
+matrixDir <- sprintf("%s/dfm", resDir)
+tablesDir <- sprintf("%s/tables", resDir)
+if (!dir.exists(resDir))
+    dir.create(resDir)
+if (!dir.exists(matrixDir))
+    dir.create(matrixDir)
+if (!dir.exists(tablesDir))
+    dir.create(tablesDir)
+file.copy(sprintf("%s/generalDfm1.dat", resDir), matrixDir)
+buildFrequencyTables(matrixDirectory = matrixDir, resultsDirectory = resDir,
+                     tablesDirectory = tablesDir, ngramsToFilter = 2:5,
+                     vocabLimit = 0.01 * perc, update = TRUE)
+gatherVocabTables(tablesDirectory = tablesDir, ngramsToFilter = 2:5)
+filterVocabTables(tableDirectory = tablesDir, ngramsToFilter = 1:5,
+                      countsToDiscount = 1:5, threshold = 1)
+```
+
+Some wrapper functions exist in research/createEverything.R. They execute
+the steps outlined above.
+
+When this code is executed successfully, we will have a directory called 
+*results/tables* in the project root. We are interested in the CSV files inside that directory.
+
 ## Working with a trained model
 
-## Evaluating the model
+The CSV files created at the end of the previous section contain the n-gram tables
+we need in order to predict words. We load them with this functions call:
+
+```{r echo=TRUE, eval=FALSE}
+source("predictWord.R")
+ngrams <- loadDatabase("../results/tables")
+```
+
+The variable *ngrams* contains all the data necessary to make predictions and evaluate
+the probability of n-grams. We build the list of suggested words as follows:
+
+```{r echo=TRUE, eval=FALSE}
+res <- predictWordKatz(ngrams, c("as", "soon", "as"))
+```
+
+*res$generalResult* is a data.table object containing the list of words sorted by
+their Katz probability (descending order). Notice that the input to the 
+*predictWordKatz()* function has to be a character vector with all the words in
+*lowercase*. See the *tokenizeInput()* function in *predictWord.R* for the way
+the input text is prepared. See also how this function is used in the Shiny app:
+*application/yellow_dog/server.R*.
+
+The following call estimates the conditional probability of the last word of
+a phrase:
+
+```{r echo=TRUE, eval=FALSE}
+res <- computeKatzProbability(ngrams, c("i", "hope", "you", "have", "a"))
+```
+
+The result contains the conditional probability estimate, the n-gram order which
+gave the estimate, the number of occurrencies of the n-gram and some more fields.
+The aforementioned function is used first of all for model validation.
+
+## Evaluating performance
+
+The script *validation.R* defines two fuctions which can be used to compute
+the cross entropy and accuracy on a training set. *computePerplexityForSentence()*
+processes a test sentence given as a character vector:
+
+```{r echo=TRUE, eval=FALSE}
+res <- computePerplexityForSentence(ngrams,
+                c("this", "is", "an", "example", "sentence", "to",
+                  "see", "how", "validation", "works"), topForAccuracy = 3)
+```
+
+If *topForAccuracy = -1*, the only thing we compute is the sum of probability
+logarithms. If *topForAccuracy* is a positive integer number, we compute
+the number of correct guesses as well. For example, if *topForAccuracy = 3*,
+a guess is considered correct if the actual word is among the top-3
+suggested words.
+
+By default, base 2 is taken for logarithms, but any base may be used instead
+(see the parameters). Given the output of *computePerplexityForSentence()*, we can compute the cross-entropy, perplexity and accuracy (in terms of correct guesses):
+
+```{r echo=TRUE, eval=FALSE}
+crossEntropy <- -res$logP / res$cnt
+perplexity <- 2.0 ^ crossEntropy
+accuracy <- res$guesses / res$cnt
+```
+
+The function *computePerplexityForTestDirectory()* accepts a directory
+with test set text files. The meaning of the rest of its parameters is the same as
+we have just described. All the necessary tokenizing, lowercasing, etc. is
+performed automatically:
+
+```{r echo=TRUE, eval=FALSE}
+res <- computePerplexityForTestDirectory(ngrams, 
+                    "../materials/datasets/validation/testing")
+```
+
+Notice that the input texts are divided into sentences. Every sentence is processed
+independently using *computePerplexityForSentence()*.
